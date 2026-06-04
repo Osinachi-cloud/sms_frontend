@@ -22,7 +22,7 @@ interface GatewayConfig {
 }
 
 export default function PaymentGatewaySettings({ schoolId }: { schoolId: string }) {
-  const { isAppAdmin, currentSchool } = useAuth();
+  const { isAppAdmin, currentSchool, hasPermission } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [showSecrets, setShowSecrets] = useState(false);
 

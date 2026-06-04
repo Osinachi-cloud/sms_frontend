@@ -1,46 +1,8 @@
 Here is your complete step-by-step deployment guide.
 
----
 
 # SchoolSaaS Deployment Guide
-
----
-
-## Step 1: Push Code to GitHub
-
-You already created the repos:
-- `https://github.com/Osinachi-cloud/sms_backend`
-- `https://github.com/Osinachi-cloud/sms_frontend`
-
-### 1.1 Push the Backend
-
-```bash
-cd C:\Users\uchenna.ogbodo\Documents\my-learning\sms_saas\sms_backend
-
-git init
-git add .
-git commit -m "feat: initial backend deployment ready"
-
-git branch -M main
-git remote add origin https://github.com/Osinachi-cloud/sms_backend.git
-git push -u origin main
-```
-
-### 1.2 Push the Frontend
-
-```bash
-cd C:\Users\uchenna.ogbodo\Documents\my-learning\sms_saas\sms_frontend
-
-git init
-git add .
-git commit -m "feat: initial frontend deployment ready"
-
-git branch -M main
-git remote add origin https://github.com/Osinachi-cloud/sms_frontend.git
-git push -u origin main
-```
-
----
+push to github
 
 ## Step 2: Deploy Backend to Railway
 
