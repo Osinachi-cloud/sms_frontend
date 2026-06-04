@@ -288,6 +288,28 @@ export const paymentApi = {
     ),
 };
 
+export const paymentGatewayApi = {
+  getConfig: (schoolId: string) =>
+    withMockFallback(
+      api.get(`/api/schools/${schoolId}/payment-gateway-config`),
+      {
+        id: 'pgc-1',
+        schoolId,
+        paystackPublicKey: 'pk_tes****test',
+        flutterwavePublicKey: 'FLWPUBK_tes****test',
+        activeGateway: 'PAYSTACK',
+        fallbackEnabled: false,
+        paystackEnabled: true,
+        flutterwaveEnabled: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ),
+
+  updateConfig: (schoolId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/payment-gateway-config`, data),
+};
+
 export const dashboardApi = {
   getSchoolStats: (schoolId: string) =>
     withMockFallback(

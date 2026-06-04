@@ -10,6 +10,7 @@ import { User, Bell, Shield, Palette, School, Trash2, RefreshCw, Camera, Type, M
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { settingsApi } from '@/lib/api';
+import PaymentGatewaySettings from './PaymentGatewaySettings';
 
 const PRESET_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -17,9 +18,11 @@ const PRESET_COLORS = [
 ];
 
 export default function SettingsPage() {
-  const { user, currentSchool } = useAuth();
+  const { user, currentSchool, isAppAdmin, hasPermission } = useAuth();
   const { applyColors } = useTheme();
-  const [activeTab, setActiveTab] = useState<'profile' | 'school' | 'notifications' | 'security'>('school');
+  const [activeTab, setActiveTab] = useState<string>('school');
+
+  const canManageGateway = isAppAdmin() || currentSchool?.roleName === 'ACCOUNTANT' || hasPermission('payment.gateway.manage');
   const [isSaving, setIsSaving] = useState(false);
 
   // Profile state
@@ -158,7 +161,8 @@ export default function SettingsPage() {
     { key: 'school', label: 'School & Branding', icon: School },
     { key: 'notifications', label: 'Notifications', icon: Bell },
     { key: 'security', label: 'Security', icon: Shield },
-  ] as const;
+    ...(canManageGateway ? [{ key: 'payment', label: 'Payment Gateway', icon: CreditCard }] : []),
+  ] as { key: string; label: string; icon: any }[];
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
@@ -712,6 +716,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Payment Gateway Tab */}
+      {activeTab === 'payment' && canManageGateway && (
+        <PaymentGatewaySettings schoolId={currentSchool?.id || ''} />
       )}
     </div>
   );
