@@ -4,7 +4,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { AiTutorWidget } from '@/components/ai/AiTutorWidget';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
-import { OfflineIndicator } from '@/components/offline/OfflineIndicator';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, ReactNode } from 'react';
@@ -42,7 +41,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
       <AiTutorWidget />
       <OnboardingTour />
-      <OfflineIndicator />
     </div>
   );
 }

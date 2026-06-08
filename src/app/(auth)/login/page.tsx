@@ -41,7 +41,7 @@ export default function LoginPage() {
       toast.success('Welcome back!');
       router.push('/dashboard');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed. Try a demo login below if backend is offline.');
+      toast.error(error.response?.data?.message || 'Login failed.');
     } finally {
       setIsLoading(false);
     }
