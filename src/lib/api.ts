@@ -3,7 +3,7 @@ import { AuthResponse } from '@/types';
 import * as mockData from './mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-const USE_MOCK_FALLBACK = true; // Set to false to disable mock data. DELETE THIS FILE SECTION BEFORE PROD.
+const USE_MOCK_FALLBACK = false; // Set to true ONLY for offline demo/development. Must be false in production.
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
