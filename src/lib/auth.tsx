@@ -116,39 +116,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, schoolId?: string) => {
-    // First login without schoolId to get user info and available schools
-    const initialResponse = await authApi.login({ email, password });
-    const initialData = initialResponse.data;
+    const response = await authApi.login({ email, password });
+    const data = response.data;
 
-    // If user has schools and no schoolId was provided, re-login with first school
-    const targetSchoolId = schoolId || (initialData.user.schools.length > 0 ? initialData.user.schools[0].id : undefined);
+    // Store initial auth state so switch-school can use it
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
 
-    if (targetSchoolId && !initialData.user.platformRole) {
-      // Re-login with schoolId to get proper token with school permissions
-      const response = await authApi.login({ email, password, schoolId: targetSchoolId });
-      const data = response.data;
+    const targetSchoolId = schoolId || (data.user.schools.length > 0 ? data.user.schools[0].id : undefined);
 
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setUser(data.user);
+    if (targetSchoolId && !data.user.platformRole) {
+      // Switch to school to get properly scoped token
+      const switchResponse = await authApi.switchSchool(targetSchoolId);
+      const switchData = switchResponse.data;
 
-      const selectedSchool = data.user.schools.find((s: SchoolInfo) => s.id === targetSchoolId);
+      localStorage.setItem('accessToken', switchData.accessToken);
+      localStorage.setItem('refreshToken', switchData.refreshToken);
+      localStorage.setItem('user', JSON.stringify(switchData.user));
+      setUser(switchData.user);
+
+      const selectedSchool = switchData.user.schools.find((s: SchoolInfo) => s.id === targetSchoolId);
       if (selectedSchool) {
         setCurrentSchool(selectedSchool);
         localStorage.setItem('currentSchool', JSON.stringify(selectedSchool));
       }
-    } else {
-      // Platform admin or no schools - use initial response
-      localStorage.setItem('accessToken', initialData.accessToken);
-      localStorage.setItem('refreshToken', initialData.refreshToken);
-      localStorage.setItem('user', JSON.stringify(initialData.user));
-      setUser(initialData.user);
-
-      if (initialData.user.schools.length === 1) {
-        setCurrentSchool(initialData.user.schools[0]);
-        localStorage.setItem('currentSchool', JSON.stringify(initialData.user.schools[0]));
-      }
+    } else if (data.user.schools.length === 1) {
+      setCurrentSchool(data.user.schools[0]);
+      localStorage.setItem('currentSchool', JSON.stringify(data.user.schools[0]));
     }
   };
 
