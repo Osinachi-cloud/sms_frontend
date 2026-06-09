@@ -45,6 +45,16 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
   });
 
+  const getErrorMessage = (error: any) => {
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'Server is taking too long to respond. Please try again.';
+    }
+    if (error.message === 'Network Error' || !error.response) {
+      return 'Unable to connect to server. Please check your internet or try again later.';
+    }
+    return error.response?.data?.message || 'Registration failed';
+  };
+
   const onSubmit = async (data: RegisterForm) => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
@@ -54,7 +64,7 @@ export default function RegisterPage() {
       router.push('/dashboard');
     } catch (error: any) {
       isSubmittingRef.current = false;
-      toast.error(error.response?.data?.message || 'Registration failed');
+      toast.error(getErrorMessage(error));
     }
   };
 

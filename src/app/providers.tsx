@@ -3,34 +3,12 @@
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
 import { Toaster } from 'react-hot-toast';
-import { ReactNode, useEffect } from 'react';
-
-function ServiceWorkerCleanup() {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister();
-        });
-      });
-    }
-    // Aggressively clear any stale caches from the old service worker
-    if ('caches' in window) {
-      caches.keys().then((names) => {
-        names.forEach((name) => {
-          caches.delete(name);
-        });
-      });
-    }
-  }, []);
-  return null;
-}
+import { ReactNode } from 'react';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <ServiceWorkerCleanup />
         {children}
         <Toaster
         position="top-right"
