@@ -425,4 +425,38 @@ export const settingsApi = {
     api.put(`/api/schools/${schoolId}/settings`, data),
 };
 
+const rawApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 60000,
+});
+
+rawApi.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+export const rawBulkEnrollApi = {
+  preview: (schoolId: string, formData: FormData) =>
+    rawApi.post(`/api/schools/${schoolId}/bulk-enroll/preview`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  getFields: (schoolId: string) =>
+    rawApi.get(`/api/schools/${schoolId}/bulk-enroll/fields`),
+
+  process: (schoolId: string, formData: FormData) =>
+    rawApi.post(`/api/schools/${schoolId}/bulk-enroll/process`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  getJob: (schoolId: string, jobId: string) =>
+    rawApi.get(`/api/schools/${schoolId}/bulk-enroll/jobs/${jobId}`),
+};
+
 export default api;

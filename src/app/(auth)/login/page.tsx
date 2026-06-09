@@ -20,6 +20,8 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+const IS_DEV = process.env.NEXT_PUBLIC_APP_ENV === 'dev';
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,38 +134,40 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+        {IS_DEV && (
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Demo Login (No Backend)</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Demo Login (No Backend)</span>
-            </div>
-          </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('platform-admin')}>
-              <Shield className="w-4 h-4 mr-1" />
-              Platform Admin
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('admin')}>
-              <UserCheck className="w-4 h-4 mr-1" />
-              School Admin
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('teacher')}>
-              <GraduationCap className="w-4 h-4 mr-1" />
-              Teacher
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('student')}>
-              <BookOpen className="w-4 h-4 mr-1" />
-              Student
-            </Button>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('platform-admin')}>
+                <Shield className="w-4 h-4 mr-1" />
+                Platform Admin
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('admin')}>
+                <UserCheck className="w-4 h-4 mr-1" />
+                School Admin
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('teacher')}>
+                <GraduationCap className="w-4 h-4 mr-1" />
+                Teacher
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('student')}>
+                <BookOpen className="w-4 h-4 mr-1" />
+                Student
+              </Button>
+            </div>
+            <p className="text-center mt-2 text-[10px] text-slate-400">
+              Click any demo role to simulate login without a running server.
+            </p>
           </div>
-          <p className="text-center mt-2 text-[10px] text-slate-400">
-            Click any demo role to simulate login without a running server.
-          </p>
-        </div>
+        )}
 
         <p className="text-center mt-4 text-sm text-slate-500 dark:text-slate-400">
           Don&apos;t have an account?{' '}
