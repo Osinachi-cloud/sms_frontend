@@ -128,23 +128,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
 
-      const targetSchoolId = schoolId || (data.user.schools.length > 0 ? data.user.schools[0].id : undefined);
+      const targetSchoolId = schoolId || (data.user.schools?.length > 0 ? data.user.schools[0].id : undefined);
 
       if (targetSchoolId && !data.user.platformRole) {
-        const switchResponse = await authApi.switchSchool(targetSchoolId);
-        const switchData = switchResponse.data;
+        try {
+          const switchResponse = await authApi.switchSchool(targetSchoolId);
+          const switchData = switchResponse.data;
 
-        localStorage.setItem('accessToken', switchData.accessToken);
-        localStorage.setItem('refreshToken', switchData.refreshToken);
-        localStorage.setItem('user', JSON.stringify(switchData.user));
-        setUser(switchData.user);
+          localStorage.setItem('accessToken', switchData.accessToken);
+          localStorage.setItem('refreshToken', switchData.refreshToken);
+          localStorage.setItem('user', JSON.stringify(switchData.user));
+          setUser(switchData.user);
 
-        const selectedSchool = switchData.user.schools.find((s: SchoolInfo) => s.id === targetSchoolId);
-        if (selectedSchool) {
-          setCurrentSchool(selectedSchool);
-          localStorage.setItem('currentSchool', JSON.stringify(selectedSchool));
+          const selectedSchool = switchData.user.schools?.find((s: SchoolInfo) => s.id === targetSchoolId);
+          if (selectedSchool) {
+            setCurrentSchool(selectedSchool);
+            localStorage.setItem('currentSchool', JSON.stringify(selectedSchool));
+          }
+        } catch (switchError) {
+          console.error('Switch school failed, continuing with initial login:', switchError);
+          // Use the school from the initial login response as fallback
+          const fallbackSchool = data.user.schools?.find((s: SchoolInfo) => s.id === targetSchoolId);
+          if (fallbackSchool) {
+            setCurrentSchool(fallbackSchool);
+            localStorage.setItem('currentSchool', JSON.stringify(fallbackSchool));
+          }
         }
-      } else if (data.user.schools.length === 1) {
+      } else if (data.user.schools?.length === 1) {
         setCurrentSchool(data.user.schools[0]);
         localStorage.setItem('currentSchool', JSON.stringify(data.user.schools[0]));
       }
