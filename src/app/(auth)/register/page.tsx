@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { School, Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,28 +33,28 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
   const { register: registerUser } = useAuth();
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
   const onSubmit = async (data: RegisterForm) => {
-    setIsLoading(true);
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     try {
       await registerUser(data.fullName, data.email, data.password, data.phone);
       toast.success('Account created successfully!');
       router.push('/dashboard');
     } catch (error: any) {
+      isSubmittingRef.current = false;
       toast.error(error.response?.data?.message || 'Registration failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -165,7 +165,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" isLoading={isLoading}>
+          <Button type="submit" className="w-full" isLoading={isSubmitting} disabled={isSubmitting}>
             Create Account
           </Button>
         </form>

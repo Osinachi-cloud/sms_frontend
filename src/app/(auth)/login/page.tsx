@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { School, Mail, Lock, Eye, EyeOff, UserCheck, GraduationCap, Shield, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,28 +24,28 @@ const IS_DEV = process.env.NEXT_PUBLIC_APP_ENV === 'dev';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
   const { login, mockLogin } = useAuth();
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = async (data: LoginForm) => {
-    setIsLoading(true);
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     try {
       await login(data.email, data.password);
       toast.success('Welcome back!');
       router.push('/dashboard');
     } catch (error: any) {
+      isSubmittingRef.current = false;
       toast.error(error.response?.data?.message || 'Login failed.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
             <Link href="#" className="text-primary-600 hover:underline font-medium">Forgot password?</Link>
           </div>
 
-          <Button type="submit" className="w-full" isLoading={isLoading}>
+          <Button type="submit" className="w-full" isLoading={isSubmitting} disabled={isSubmitting}>
             Sign In
           </Button>
         </form>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { User, AuthResponse, SchoolInfo } from '@/types';
 import { authApi } from './api';
 import { useRouter } from 'next/navigation';
@@ -99,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [currentSchool, setCurrentSchool] = useState<SchoolInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isLoggingInRef = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -116,35 +117,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, schoolId?: string) => {
-    const response = await authApi.login({ email, password });
-    const data = response.data;
+    if (isLoggingInRef.current) return;
+    isLoggingInRef.current = true;
+    try {
+      const response = await authApi.login({ email, password });
+      const data = response.data;
 
-    // Store initial auth state so switch-school can use it
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
 
-    const targetSchoolId = schoolId || (data.user.schools.length > 0 ? data.user.schools[0].id : undefined);
+      const targetSchoolId = schoolId || (data.user.schools.length > 0 ? data.user.schools[0].id : undefined);
 
-    if (targetSchoolId && !data.user.platformRole) {
-      // Switch to school to get properly scoped token
-      const switchResponse = await authApi.switchSchool(targetSchoolId);
-      const switchData = switchResponse.data;
+      if (targetSchoolId && !data.user.platformRole) {
+        const switchResponse = await authApi.switchSchool(targetSchoolId);
+        const switchData = switchResponse.data;
 
-      localStorage.setItem('accessToken', switchData.accessToken);
-      localStorage.setItem('refreshToken', switchData.refreshToken);
-      localStorage.setItem('user', JSON.stringify(switchData.user));
-      setUser(switchData.user);
+        localStorage.setItem('accessToken', switchData.accessToken);
+        localStorage.setItem('refreshToken', switchData.refreshToken);
+        localStorage.setItem('user', JSON.stringify(switchData.user));
+        setUser(switchData.user);
 
-      const selectedSchool = switchData.user.schools.find((s: SchoolInfo) => s.id === targetSchoolId);
-      if (selectedSchool) {
-        setCurrentSchool(selectedSchool);
-        localStorage.setItem('currentSchool', JSON.stringify(selectedSchool));
+        const selectedSchool = switchData.user.schools.find((s: SchoolInfo) => s.id === targetSchoolId);
+        if (selectedSchool) {
+          setCurrentSchool(selectedSchool);
+          localStorage.setItem('currentSchool', JSON.stringify(selectedSchool));
+        }
+      } else if (data.user.schools.length === 1) {
+        setCurrentSchool(data.user.schools[0]);
+        localStorage.setItem('currentSchool', JSON.stringify(data.user.schools[0]));
       }
-    } else if (data.user.schools.length === 1) {
-      setCurrentSchool(data.user.schools[0]);
-      localStorage.setItem('currentSchool', JSON.stringify(data.user.schools[0]));
+    } finally {
+      isLoggingInRef.current = false;
     }
   };
 
