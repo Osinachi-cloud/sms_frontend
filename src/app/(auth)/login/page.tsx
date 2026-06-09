@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { School, Mail, Lock, Eye, EyeOff, UserCheck, GraduationCap, Shield, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,42 +20,30 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-const IS_DEV = process.env.NEXT_PUBLIC_APP_ENV === 'dev';
-
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const isSubmittingRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { login, mockLogin } = useAuth();
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
-  const getErrorMessage = (error: any) => {
-    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-      return 'Server is taking too long to respond. Please try again.';
-    }
-    if (error.message === 'Network Error' || !error.response) {
-      return 'Unable to connect to server. Please check your internet or try again later.';
-    }
-    return error.response?.data?.message || 'Login failed.';
-  };
-
   const onSubmit = async (data: LoginForm) => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
+    setIsLoading(true);
     try {
       await login(data.email, data.password);
       toast.success('Welcome back!');
       router.push('/dashboard');
     } catch (error: any) {
-      isSubmittingRef.current = false;
-      toast.error(getErrorMessage(error));
+      toast.error(error.response?.data?.message || 'Login failed. Try a demo login below if backend is offline.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -139,45 +127,43 @@ export default function LoginPage() {
             <Link href="#" className="text-primary-600 hover:underline font-medium">Forgot password?</Link>
           </div>
 
-          <Button type="submit" className="w-full" isLoading={isSubmitting} disabled={isSubmitting}>
+          <Button type="submit" className="w-full" isLoading={isLoading}>
             Sign In
           </Button>
         </form>
 
-        {IS_DEV && (
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Demo Login (No Backend)</span>
-              </div>
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
             </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('platform-admin')}>
-                <Shield className="w-4 h-4 mr-1" />
-                Platform Admin
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('admin')}>
-                <UserCheck className="w-4 h-4 mr-1" />
-                School Admin
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('teacher')}>
-                <GraduationCap className="w-4 h-4 mr-1" />
-                Teacher
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => handleMockLogin('student')}>
-                <BookOpen className="w-4 h-4 mr-1" />
-                Student
-              </Button>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Demo Login (No Backend)</span>
             </div>
-            <p className="text-center mt-2 text-[10px] text-slate-400">
-              Click any demo role to simulate login without a running server.
-            </p>
           </div>
-        )}
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('platform-admin')}>
+              <Shield className="w-4 h-4 mr-1" />
+              Platform Admin
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('admin')}>
+              <UserCheck className="w-4 h-4 mr-1" />
+              School Admin
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('teacher')}>
+              <GraduationCap className="w-4 h-4 mr-1" />
+              Teacher
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('student')}>
+              <BookOpen className="w-4 h-4 mr-1" />
+              Student
+            </Button>
+          </div>
+          <p className="text-center mt-2 text-[10px] text-slate-400">
+            Click any demo role to simulate login without a running server.
+          </p>
+        </div>
 
         <p className="text-center mt-4 text-sm text-slate-500 dark:text-slate-400">
           Don&apos;t have an account?{' '}

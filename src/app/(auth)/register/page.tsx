@@ -7,22 +7,17 @@ import { motion } from 'framer-motion';
 import { School, Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,32}$/;
-
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(32, 'Password must not exceed 32 characters')
-    .regex(PASSWORD_REGEX, 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -33,38 +28,28 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const isSubmittingRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { register: registerUser } = useAuth();
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
-  const getErrorMessage = (error: any) => {
-    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-      return 'Server is taking too long to respond. Please try again.';
-    }
-    if (error.message === 'Network Error' || !error.response) {
-      return 'Unable to connect to server. Please check your internet or try again later.';
-    }
-    return error.response?.data?.message || 'Registration failed';
-  };
-
   const onSubmit = async (data: RegisterForm) => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
+    setIsLoading(true);
     try {
       await registerUser(data.fullName, data.email, data.password, data.phone);
       toast.success('Account created successfully!');
       router.push('/dashboard');
     } catch (error: any) {
-      isSubmittingRef.current = false;
-      toast.error(getErrorMessage(error));
+      toast.error(error.response?.data?.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -175,7 +160,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" isLoading={isSubmitting} disabled={isSubmitting}>
+          <Button type="submit" className="w-full" isLoading={isLoading}>
             Create Account
           </Button>
         </form>

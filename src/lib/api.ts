@@ -8,7 +8,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000,
+  timeout: 15000,
 });
 
 let isRefreshing = false;
@@ -427,7 +427,7 @@ export const settingsApi = {
 
 const rawApi = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000,
+  timeout: 15000,
 });
 
 rawApi.interceptors.request.use(

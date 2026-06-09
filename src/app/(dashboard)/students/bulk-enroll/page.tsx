@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/lib/auth';
@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileSpreadsheet, ArrowRight, Check, X, RefreshCw, Download, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
+
 
 interface PreviewResult {
   headers: string[];
@@ -48,27 +48,6 @@ export default function BulkEnrollPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentJob, setCurrentJob] = useState<BulkJob | null>(null);
   const [dragActive, setDragActive] = useState(false);
-
-  useEffect(() => {
-    if (!currentSchool?.id) return;
-    rawBulkEnrollApi.getFields(currentSchool.id).then((res) => {
-      setAvailableFields(res.data);
-    }).catch(() => {
-      // fallback fields if API fails
-      setAvailableFields([
-        { key: 'full_name', label: 'Full Name', required: true },
-        { key: 'email', label: 'Email', required: false },
-        { key: 'phone', label: 'Phone', required: false },
-        { key: 'gender', label: 'Gender', required: false },
-        { key: 'address', label: 'Address', required: false },
-        { key: 'admission_number', label: 'Admission Number', required: false },
-        { key: 'class_id', label: 'Class ID', required: false },
-        { key: 'parent_name', label: 'Parent Name', required: false },
-        { key: 'parent_email', label: 'Parent Email', required: false },
-        { key: 'parent_phone', label: 'Parent Phone', required: false },
-      ]);
-    });
-  }, [currentSchool?.id]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -220,50 +199,15 @@ export default function BulkEnrollPage() {
   };
 
   const downloadTemplate = () => {
-    if (availableFields.length === 0) {
-      toast.error('Template fields not loaded yet. Please wait.');
-      return;
-    }
-
     const headers = availableFields.map(f => f.label);
-
-    // Sample data rows to show users what the data should look like
-    const sampleRows = [
-      ['Ade Johnson', 'ade.johnson@example.com', '+2348012345678', 'Male', '12 Greenfield Ave, Lagos', 'GFA/2025/001', 'class-uuid-here', 'Mr Johnson', 'parent@example.com', '+2348087654321'],
-      ['Chioma Obi', 'chioma.obi@example.com', '+2348023456789', 'Female', '5 Oak Street, Abuja', 'GFA/2025/002', 'class-uuid-here', 'Mrs Obi', 'mrs.obi@example.com', '+2348098765432'],
-      ['David Lee', 'david.lee@example.com', '+2348034567890', 'Male', '', 'GFA/2025/003', '', '', '', ''],
-    ];
-
-    const wsData = [headers, ...sampleRows];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Set column widths for readability
-    const colWidths = headers.map(() => ({ wch: 22 }));
-    ws['!cols'] = colWidths;
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Student Enrollment Template');
-
-    // Also add an instruction sheet
-    const instructionData = [
-      ['Student Bulk Enrollment Template - Instructions'],
-      [],
-      ['Field', 'Required', 'Description'],
-      ...availableFields.map(f => [f.label, f.required ? 'Yes' : 'No', getFieldDescription(f.key)]),
-      [],
-      ['Notes:'],
-      ['- Gender should be Male, Female, or Other'],
-      ['- Class ID should be the UUID of the class (optional)'],
-      ['- Admission Number is auto-generated if left blank'],
-      ['- Columns marked with * are required'],
-      ['- You can delete the sample rows and add your own data'],
-      ['- Save the file as .xlsx or .csv before uploading'],
-    ];
-    const wsInstr = XLSX.utils.aoa_to_sheet(instructionData);
-    wsInstr['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 60 }];
-    XLSX.utils.book_append_sheet(wb, wsInstr, 'Instructions');
-
-    XLSX.writeFile(wb, 'student_enrollment_template.xlsx');
+    const csvContent = headers.join(',') + '\n';
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_enrollment_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const getFieldDescription = (key: string) => {
