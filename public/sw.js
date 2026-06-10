@@ -107,6 +107,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Skip Next.js internal RSC payloads (used by App Router for client navigation)
+  if (url.searchParams.has('_rsc')) {
+    return;
+  }
+
+  // Skip internal Next.js webpack HMR and data requests in dev mode
+  if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/__nextjs')) {
+    return;
+  }
+
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(handleApiRequest(request));
     return;
