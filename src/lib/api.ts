@@ -459,4 +459,62 @@ export const rawBulkEnrollApi = {
     rawApi.get(`/api/schools/${schoolId}/bulk-enroll/jobs/${jobId}`),
 };
 
+export const rawCmsApi = {
+  getFolders: (schoolId: string) => rawApi.get(`/api/schools/${schoolId}/cms/folders`),
+
+  getContent: (schoolId: string, id: string) =>
+    rawApi.get(`/api/schools/${schoolId}/cms/content/${id}`),
+
+  getVersions: (contentId: string, params?: { page?: number; size?: number }) =>
+    rawApi.get(`/api/cms/content/${contentId}/versions`, { params }),
+
+  saveContent: (id: string | null, data: any) =>
+    id
+      ? rawApi.put(`/api/schools/${data.schoolId}/cms/content/${id}`, data)
+      : rawApi.post(`/api/schools/${data.schoolId}/cms/content`, data),
+
+  createVersion: (contentId: string, data: any) =>
+    rawApi.post(`/api/cms/content/${contentId}/versions`, data),
+
+  submitContent: (contentId: string) =>
+    rawApi.put(`/api/cms/content/${contentId}/submit`),
+
+  scheduleContent: (contentId: string, data: { publishAt: string }) =>
+    rawApi.post(`/api/cms/content/${contentId}/versions/schedule`, data),
+
+  restoreVersion: (contentId: string, versionNumber: number) =>
+    rawApi.post(`/api/cms/content/${contentId}/versions/${versionNumber}/restore`),
+
+  toggleFeatured: (contentId: string, featured: boolean) =>
+    rawApi.post(`/api/cms/content/${contentId}/versions/featured`, null, {
+      params: { featured },
+    }),
+};
+
+export const rawDeletionRequestApi = {
+  getAll: (params?: { page?: number; size?: number; status?: string }) =>
+    rawApi.get('/api/admin/deletion-requests', { params }),
+
+  review: (id: string, data: { approved: boolean; notes?: string }) =>
+    rawApi.post(`/api/admin/deletion-requests/${id}/review`, data),
+
+  forward: (id: string, data: { notes?: string }) =>
+    rawApi.post(`/api/admin/deletion-requests/${id}/forward`, data),
+
+  decide: (id: string, data: { approved: boolean; notes?: string }) =>
+    rawApi.post(`/api/admin/deletion-requests/${id}/decide`, data),
+};
+
+export const rawAnalyticsApi = {
+  dashboard: (schoolId: string) => rawApi.get(`/api/schools/${schoolId}/dashboard/stats`),
+  revenueChart: (schoolId: string, months = 12) =>
+    rawApi.get(`/api/schools/${schoolId}/analytics/revenue`, { params: { months } }),
+  enrollmentTrend: (schoolId: string, months = 12) =>
+    rawApi.get(`/api/schools/${schoolId}/analytics/enrollment`, { params: { months } }),
+  genderDistribution: (schoolId: string) =>
+    rawApi.get(`/api/schools/${schoolId}/analytics/gender`),
+  classDistribution: (schoolId: string) =>
+    rawApi.get(`/api/schools/${schoolId}/analytics/class`),
+};
+
 export default api;
