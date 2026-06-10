@@ -57,7 +57,9 @@ export default function DeletionRequestsPage() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const response = await rawDeletionRequestApi.getAll(activeTab);
+      const response = await rawDeletionRequestApi.getAll(
+        activeTab === 'all' ? undefined : { status: activeTab }
+      );
       setRequests(response.data.content || []);
     } catch (error) {
       toast.error('Failed to fetch deletion requests');
