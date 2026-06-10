@@ -82,8 +82,9 @@ export default function CreateContentPage() {
   };
 
   const fetchContent = async (id: string) => {
+    if (!currentSchool?.id) return;
     try {
-      const response = await rawCmsApi.getContent(id);
+      const response = await rawCmsApi.getContent(currentSchool.id, id);
       const content = response.data;
       setTitle(content.title);
       setBody(content.body || '');

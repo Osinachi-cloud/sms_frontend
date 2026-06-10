@@ -461,30 +461,22 @@ export const rawBulkEnrollApi = {
 
 export const rawCmsApi = {
   getFolders: (schoolId: string) => rawApi.get(`/api/schools/${schoolId}/cms/folders`),
-
   getContent: (schoolId: string, id: string) =>
     rawApi.get(`/api/schools/${schoolId}/cms/content/${id}`),
-
   getVersions: (contentId: string, params?: { page?: number; size?: number }) =>
     rawApi.get(`/api/cms/content/${contentId}/versions`, { params }),
-
   saveContent: (id: string | null, data: any) =>
     id
       ? rawApi.put(`/api/schools/${data.schoolId}/cms/content/${id}`, data)
       : rawApi.post(`/api/schools/${data.schoolId}/cms/content`, data),
-
   createVersion: (contentId: string, data: any) =>
     rawApi.post(`/api/cms/content/${contentId}/versions`, data),
-
   submitContent: (contentId: string) =>
     rawApi.put(`/api/cms/content/${contentId}/submit`),
-
   scheduleContent: (contentId: string, data: { publishAt: string }) =>
     rawApi.post(`/api/cms/content/${contentId}/versions/schedule`, data),
-
   restoreVersion: (contentId: string, versionNumber: number) =>
     rawApi.post(`/api/cms/content/${contentId}/versions/${versionNumber}/restore`),
-
   toggleFeatured: (contentId: string, featured: boolean) =>
     rawApi.post(`/api/cms/content/${contentId}/versions/featured`, null, {
       params: { featured },

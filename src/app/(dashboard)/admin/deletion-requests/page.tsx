@@ -78,7 +78,7 @@ export default function DeletionRequestsPage() {
     try {
       await rawDeletionRequestApi.review(selectedRequest.id, {
         notes: notes.trim(),
-        approve,
+        approved: approve,
       });
       toast.success(approve ? 'Request approved for forwarding' : 'Request rejected');
       setActionModal(null);
@@ -125,7 +125,7 @@ export default function DeletionRequestsPage() {
     try {
       await rawDeletionRequestApi.decide(selectedRequest.id, {
         notes: notes.trim(),
-        approve,
+        approved: approve,
       });
       toast.success(approve ? 'School deletion approved. Backup created.' : 'Request rejected');
       setActionModal(null);
