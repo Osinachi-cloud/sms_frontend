@@ -5,18 +5,65 @@ import { Header } from '@/components/layout/Header';
 import { AiTutorWidget } from '@/components/ai/AiTutorWidget';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, ReactNode } from 'react';
 
+const SCHOOL_ONLY_PATHS = [
+  '/students',
+  '/teachers',
+  '/users',
+  '/cms',
+  '/calendar',
+  '/timetable',
+  '/quizzes',
+  '/library',
+  '/id-cards',
+  '/report-cards',
+  '/admissions',
+  '/payments',
+  '/analytics',
+  '/gamification',
+  '/messages',
+  '/notifications',
+  '/roles',
+];
+
+const PLATFORM_ONLY_PATHS = [
+  '/schools',
+  '/admin/deletion-requests',
+];
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isPlatformAdmin, currentSchool } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  // Route guards: prevent platform admins from accessing school-specific pages
+  // and non-platform admins from accessing platform-only pages
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+
+    const isPlatform = isPlatformAdmin();
+    const currentPath = pathname || '';
+
+    if (isPlatform) {
+      const isSchoolPath = SCHOOL_ONLY_PATHS.some(path => currentPath.startsWith(path));
+      if (isSchoolPath) {
+        router.push('/dashboard');
+      }
+    } else {
+      const isPlatformPath = PLATFORM_ONLY_PATHS.some(path => currentPath.startsWith(path));
+      if (isPlatformPath) {
+        router.push('/dashboard');
+      }
+    }
+  }, [isLoading, isAuthenticated, isPlatformAdmin, pathname, router]);
 
   if (isLoading) {
     return (

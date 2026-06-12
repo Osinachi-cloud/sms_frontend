@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { dashboardApi } from '@/lib/api';
 import { DashboardStats } from '@/types';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import {
   Users,
   GraduationCap,
@@ -241,37 +242,39 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          data-tour="actions"
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Add Student', icon: Users, href: '/students' },
-                  { label: 'Add Teacher', icon: GraduationCap, href: '/teachers' },
-                  { label: 'Create Content', icon: BookOpen, href: '/cms/create' },
-                  { label: 'View Payments', icon: CreditCard, href: '/payments' },
-                ].map((action, index) => (
-                  <a
-                    key={index}
-                    href={action.href}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <action.icon className="w-6 h-6 text-primary-500" />
-                    <span className="text-sm font-medium">{action.label}</span>
-                  </a>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {!isPlatformAdmin() && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            data-tour="actions"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Add Student', icon: Users, href: '/students?action=add' },
+                    { label: 'Add Teacher', icon: GraduationCap, href: '/teachers?action=add' },
+                    { label: 'Create Content', icon: BookOpen, href: '/cms/create' },
+                    { label: 'View Payments', icon: CreditCard, href: '/payments' },
+                  ].map((action, index) => (
+                    <Link
+                      key={index}
+                      href={action.href}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <action.icon className="w-6 h-6 text-primary-500" />
+                      <span className="text-sm font-medium">{action.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

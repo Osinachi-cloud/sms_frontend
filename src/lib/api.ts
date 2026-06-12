@@ -179,6 +179,14 @@ export const teacherApi = {
     api.delete(`/api/schools/${schoolId}/teachers/${teacherId}`),
 };
 
+export const userApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number; search?: string }) =>
+    api.get(`/api/schools/${schoolId}/users`, { params }),
+
+  create: (schoolId: string, data: { fullName: string; email: string; password: string; phone?: string; roleName: string }) =>
+    api.post(`/api/schools/${schoolId}/users`, data),
+};
+
 export const cmsApi = {
   getFolders: (schoolId: string) => api.get(`/api/schools/${schoolId}/cms/folders`),
 

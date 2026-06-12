@@ -10,6 +10,7 @@ import { teacherApi } from '@/lib/api';
 import { formatDate, getStatusColor } from '@/lib/utils';
 import { Teacher, PageResponse } from '@/types';
 import { Plus, Search, GraduationCap } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,6 +21,7 @@ const teacherSchema = z.object({
   fullName: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
   employeeId: z.string().optional(),
   specialization: z.string().optional(),
   qualification: z.string().optional(),
@@ -29,6 +31,7 @@ type TeacherForm = z.infer<typeof teacherSchema>;
 
 export default function TeachersPage() {
   const { currentSchool, hasPermission } = useAuth();
+  const searchParams = useSearchParams();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,7 +44,10 @@ export default function TeachersPage() {
   });
 
   const fetchTeachers = async () => {
-    if (!currentSchool) return;
+    if (!currentSchool) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const response = await teacherApi.getAll(currentSchool.id, {
         page,
@@ -61,6 +67,12 @@ export default function TeachersPage() {
   useEffect(() => {
     fetchTeachers();
   }, [currentSchool, page, search]);
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setIsModalOpen(true);
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: TeacherForm) => {
     if (!currentSchool) return;
@@ -221,6 +233,13 @@ export default function TeachersPage() {
               {...register('qualification')}
               label="Qualification"
               placeholder="e.g., M.Ed"
+            />
+            <Input
+              {...register('password')}
+              type="password"
+              label="Password (optional)"
+              placeholder="Set password to create login account"
+              error={errors.password?.message}
             />
           </div>
           <div className="flex gap-3 pt-4">

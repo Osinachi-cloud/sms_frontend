@@ -11,6 +11,7 @@ import { formatDate, getStatusColor } from '@/lib/utils';
 import { Student, PageResponse } from '@/types';
 import { Plus, Search, Upload, User } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +23,7 @@ const studentSchema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().optional(),
   gender: z.string().optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
   parentName: z.string().optional(),
   parentEmail: z.string().email('Invalid email').optional().or(z.literal('')),
   parentPhone: z.string().optional(),
@@ -31,6 +33,7 @@ type StudentForm = z.infer<typeof studentSchema>;
 
 export default function StudentsPage() {
   const { currentSchool, hasPermission } = useAuth();
+  const searchParams = useSearchParams();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,7 +46,10 @@ export default function StudentsPage() {
   });
 
   const fetchStudents = async () => {
-    if (!currentSchool) return;
+    if (!currentSchool) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const response = await studentApi.getAll(currentSchool.id, {
         page,
@@ -63,6 +69,12 @@ export default function StudentsPage() {
   useEffect(() => {
     fetchStudents();
   }, [currentSchool, page, search]);
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setIsModalOpen(true);
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: StudentForm) => {
     if (!currentSchool) return;
@@ -218,6 +230,13 @@ export default function StudentsPage() {
               {...register('phone')}
               label="Phone"
               placeholder="Phone number"
+            />
+            <Input
+              {...register('password')}
+              type="password"
+              label="Password (optional)"
+              placeholder="Set password to create login account"
+              error={errors.password?.message}
             />
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">

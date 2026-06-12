@@ -27,6 +27,7 @@ import {
   ClipboardList,
   TicketCheck,
   Gamepad2,
+  UserCog,
   X,
   Menu,
 } from 'lucide-react';
@@ -39,18 +40,25 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   permission?: string;
-  platformAdminOnly?: boolean;
-  roleOnly?: string[];
 }
 
-const adminNavItems: NavItem[] = [
+// Platform Admin only sees platform-level items
+const platformAdminNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Schools', href: '/schools', icon: School, platformAdminOnly: true },
+  { name: 'Schools', href: '/schools', icon: School },
+  { name: 'Deletion Requests', href: '/admin/deletion-requests', icon: Trash2 },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+// School Admin sees school management items
+const schoolAdminNavItems: NavItem[] = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Users', href: '/users', icon: UserCog, permission: 'user.read' },
   { name: 'Students', href: '/students', icon: Users, permission: 'student.read' },
   { name: 'Teachers', href: '/teachers', icon: GraduationCap, permission: 'teacher.read' },
   { name: 'CMS', href: '/cms', icon: BookOpen, permission: 'cms.content.read' },
-  { name: 'Calendar', href: '/calendar', icon: CalendarDays, permission: 'session.read' },
-  { name: 'Timetable', href: '/timetable', icon: Clock, permission: 'class.read' },
+  { name: 'Calendar', href: '/calendar', icon: CalendarDays },
+  { name: 'Timetable', href: '/timetable', icon: Clock },
   { name: 'Quizzes', href: '/quizzes', icon: ClipboardList },
   { name: 'Library', href: '/library', icon: Library },
   { name: 'ID Cards', href: '/id-cards', icon: CreditCard },
@@ -62,7 +70,6 @@ const adminNavItems: NavItem[] = [
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Notifications', href: '/notifications', icon: Bell },
   { name: 'Roles', href: '/roles', icon: Shield, permission: 'role.read' },
-  { name: 'Deletion Requests', href: '/admin/deletion-requests', icon: Trash2, platformAdminOnly: true },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -124,19 +131,17 @@ export function Sidebar() {
   }, []);
 
   const getNavItems = () => {
-    if (isPlatformAdmin()) return adminNavItems;
+    if (isPlatformAdmin()) return platformAdminNavItems;
     if (roleName.includes('student')) return studentNavItems;
     if (roleName.includes('teacher')) return teacherNavItems;
-    return adminNavItems;
+    // Default to school admin nav for anyone else with a school role (ADMIN, etc.)
+    return schoolAdminNavItems;
   };
 
   const filteredNavItems = getNavItems().filter((item) => {
-    if (item.platformAdminOnly) return isPlatformAdmin();
-    if (item.permission) return hasPermission(item.permission) || isPlatformAdmin();
+    if (item.permission) return hasPermission(item.permission);
     return true;
   });
-
-  const sidebarWidth = isCollapsed ? 80 : 280;
 
   return (
     <>
@@ -315,7 +320,6 @@ export function Sidebar() {
           </button>
         </div>
       </motion.aside>
-
     </>
   );
 }

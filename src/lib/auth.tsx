@@ -51,6 +51,7 @@ const MOCK_USERS: Record<string, User> = {
           'fee.read', 'fee.create', 'fee.update', 'payment.read', 'payment.create', 'payment.gateway.manage',
           'analytics.academic.view', 'analytics.finance.view', 'school.read', 'school.update',
           'role.read', 'role.create', 'role.delete',
+          'user.read', 'user.create',
         ],
       },
     ],
