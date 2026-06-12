@@ -56,6 +56,8 @@ const schoolAdminNavItems: NavItem[] = [
   { name: 'Users', href: '/users', icon: UserCog, permission: 'user.read' },
   { name: 'Students', href: '/students', icon: Users, permission: 'student.read' },
   { name: 'Teachers', href: '/teachers', icon: GraduationCap, permission: 'teacher.read' },
+  { name: 'Classes', href: '/classes', icon: School },
+  { name: 'Promotions', href: '/promotions', icon: GraduationCap },
   { name: 'CMS', href: '/cms', icon: BookOpen, permission: 'cms.content.read' },
   { name: 'Calendar', href: '/calendar', icon: CalendarDays },
   { name: 'Timetable', href: '/timetable', icon: Clock },
@@ -91,6 +93,7 @@ const teacherNavItems: NavItem[] = [
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Attendance', href: '/teacher/attendance', icon: CalendarDays },
   { name: 'Gradebook', href: '/teacher/gradebook', icon: Award },
+  { name: 'Promotions', href: '/promotions', icon: GraduationCap },
   { name: 'CMS', href: '/cms', icon: BookOpen, permission: 'cms.content.read' },
   { name: 'Quizzes', href: '/quizzes', icon: ClipboardList },
   { name: 'Timetable', href: '/timetable', icon: Clock },
@@ -139,7 +142,11 @@ export function Sidebar() {
   };
 
   const filteredNavItems = getNavItems().filter((item) => {
-    if (item.permission) return hasPermission(item.permission);
+    if (item.permission) {
+      // School admins bypass granular permission checks and see all management items
+      if (roleName.includes('admin')) return true;
+      return hasPermission(item.permission);
+    }
     return true;
   });
 

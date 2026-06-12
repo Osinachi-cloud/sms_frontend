@@ -105,7 +105,9 @@ export function StudentDashboardView() {
             Welcome, {dashboard.student.fullName}!
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            {dashboard.currentClass?.name || 'No class assigned'} • {dashboard.student.admissionNumber}
+            {dashboard.currentClass?.name || 'No class assigned'}
+            {dashboard.currentClass?.classTeacher ? ` • Class Teacher: ${dashboard.currentClass.classTeacher}` : ''}
+            {' • '}{dashboard.student.admissionNumber}
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-500">

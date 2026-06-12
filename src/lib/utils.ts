@@ -53,3 +53,12 @@ export function getStatusColor(status: string): string {
   };
   return colors[status] || 'bg-gray-100 text-gray-800';
 }
+
+export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,32}$/;
+export const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters and contain uppercase, lowercase, number and special character (@$!%*?&)';
+
+export function validatePassword(password?: string): string | null {
+  if (!password || password.trim() === '') return null; // optional
+  if (!PASSWORD_REGEX.test(password)) return PASSWORD_REQUIREMENTS;
+  return null;
+}

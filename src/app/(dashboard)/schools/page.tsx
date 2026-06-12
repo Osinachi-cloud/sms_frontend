@@ -202,6 +202,20 @@ export default function SchoolsPage() {
     { key: 'email', header: 'Email' },
     { key: 'phone', header: 'Phone' },
     {
+      key: 'admin',
+      header: 'School Admin',
+      render: (school: School) => (
+        school.admin ? (
+          <div>
+            <p className="font-medium">{school.admin.fullName}</p>
+            <p className="text-xs text-slate-500">{school.admin.email}</p>
+          </div>
+        ) : (
+          <span className="text-slate-400 text-sm">-</span>
+        )
+      ),
+    },
+    {
       key: 'status',
       header: 'Status',
       render: (school: School) => (

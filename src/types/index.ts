@@ -36,6 +36,10 @@ export interface School {
   config: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+  admin?: {
+    fullName: string;
+    email: string;
+  };
 }
 
 export interface Role {
@@ -86,6 +90,18 @@ export interface Teacher {
   status: string;
   metadata: Record<string, any>;
   createdAt: string;
+}
+
+export interface Classroom {
+  id: string;
+  name: string;
+  section?: string;
+  classTeacherId?: string;
+  classTeacherName?: string;
+  capacity?: number;
+  studentCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ContentItem {
@@ -272,4 +288,67 @@ export interface Grade {
   gradeLetter?: string;
   remarks?: string;
   createdAt: string;
+}
+
+export interface AdmissionApplication {
+  id: string;
+  applicationNumber: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  dateOfBirth?: string;
+  gender?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  intendedClassId?: string;
+  intendedClassName?: string;
+  previousSchool?: string;
+  guardianName: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+  guardianRelationship?: string;
+  guardianAddress?: string;
+  status: 'PENDING' | 'UNDER_REVIEW' | 'INTERVIEW_SCHEDULED' | 'ACCEPTED' | 'REJECTED';
+  examScore?: number;
+  interviewScore?: number;
+  reviewNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentDetail extends Student {
+  className?: string;
+  classTeacherName?: string;
+  section?: string;
+  parents: {
+    id?: string;
+    fullName: string;
+    email?: string;
+    phone?: string;
+    relationship?: string;
+    address?: string;
+    occupation?: string;
+  }[];
+  payments: Payment[];
+  feesDue: {
+    id: string;
+    title: string;
+    amount: number;
+    dueDate: string;
+    status: string;
+  }[];
+  grades: Grade[];
+  reportCards: {
+    id: string;
+    termName: string;
+    year: string;
+    overallAverage: number;
+    position?: number;
+    totalStudents?: number;
+    gradeLetter?: string;
+    status: string;
+    createdAt: string;
+  }[];
+  attendanceSummary?: AttendanceSummary;
 }

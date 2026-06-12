@@ -11,6 +11,7 @@ import { useEffect, ReactNode } from 'react';
 const SCHOOL_ONLY_PATHS = [
   '/students',
   '/teachers',
+  '/classes',
   '/users',
   '/cms',
   '/calendar',

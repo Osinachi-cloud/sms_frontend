@@ -345,6 +345,19 @@ export const quizApi = {
     api.post(`/api/schools/any/quizzes/${quizId}/submit`, data),
 };
 
+export const classApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number; search?: string }) =>
+    api.get(`/api/schools/${schoolId}/classes`, { params }),
+  getOne: (schoolId: string, classId: string) =>
+    api.get(`/api/schools/${schoolId}/classes/${classId}`),
+  create: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/classes`, data),
+  update: (schoolId: string, classId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/classes/${classId}`, data),
+  delete: (schoolId: string, classId: string) =>
+    api.delete(`/api/schools/${schoolId}/classes/${classId}`),
+};
+
 export const timetableApi = {
   getPeriods: (schoolId: string) =>
     api.get(`/api/schools/${schoolId}/timetable/periods`),
@@ -515,6 +528,15 @@ export const rawAnalyticsApi = {
     rawApi.get(`/api/schools/${schoolId}/analytics/gender`),
   classDistribution: (schoolId: string) =>
     rawApi.get(`/api/schools/${schoolId}/analytics/class`),
+};
+
+export const promotionApi = {
+  getEligibleStudents: (schoolId: string, classId: string) =>
+    api.get(`/api/schools/${schoolId}/promotions/classes/${classId}`),
+  promoteStudent: (schoolId: string, studentId: string, force = false) =>
+    api.post(`/api/schools/${schoolId}/promotions/students/${studentId}?force=${force}`),
+  promoteBatch: (schoolId: string, classId: string, studentIds: string[]) =>
+    api.post(`/api/schools/${schoolId}/promotions/classes/${classId}/batch`, { studentIds }),
 };
 
 export default api;

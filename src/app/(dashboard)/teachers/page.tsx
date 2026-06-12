@@ -7,10 +7,11 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { teacherApi } from '@/lib/api';
-import { formatDate, getStatusColor } from '@/lib/utils';
+import { formatDate, getStatusColor, validatePassword } from '@/lib/utils';
 import { Teacher, PageResponse } from '@/types';
-import { Plus, Search, GraduationCap } from 'lucide-react';
+import { Plus, Search, GraduationCap, Pencil, Upload } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,23 +22,31 @@ const teacherSchema = z.object({
   fullName: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
+  password: z.string()
+    .refine((val) => !val || validatePassword(val) === null, { message: 'Password must be 8-32 chars with uppercase, lowercase, number and special char (@$!%*?&)' })
+    .optional()
+    .or(z.literal('')),
   employeeId: z.string().optional(),
   specialization: z.string().optional(),
   qualification: z.string().optional(),
 });
 
 type TeacherForm = z.infer<typeof teacherSchema>;
+type ModalMode = 'create' | 'edit';
 
 export default function TeachersPage() {
   const { currentSchool, hasPermission } = useAuth();
+  const isAdmin = currentSchool?.roleName?.toLowerCase().includes('admin') ?? false;
   const searchParams = useSearchParams();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>('create');
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<TeacherForm>({
     resolver: zodResolver(teacherSchema),
@@ -52,7 +61,8 @@ export default function TeachersPage() {
       const response = await teacherApi.getAll(currentSchool.id, {
         page,
         size: 10,
-        search: search || undefined
+        search: search || undefined,
+        status: statusFilter || undefined,
       });
       const data = response.data as PageResponse<Teacher>;
       setTeachers(data.content);
@@ -66,25 +76,56 @@ export default function TeachersPage() {
 
   useEffect(() => {
     fetchTeachers();
-  }, [currentSchool, page, search]);
+  }, [currentSchool, page, search, statusFilter]);
 
   useEffect(() => {
     if (searchParams.get('action') === 'add') {
-      setIsModalOpen(true);
+      openCreate();
     }
   }, [searchParams]);
 
   const onSubmit = async (data: TeacherForm) => {
     if (!currentSchool) return;
     try {
-      await teacherApi.create(currentSchool.id, data);
-      toast.success('Teacher created successfully');
+      const payload = { ...data };
+      if (!payload.password) delete payload.password;
+      if (modalMode === 'create') {
+        await teacherApi.create(currentSchool.id, payload);
+        toast.success('Teacher created successfully');
+      } else if (editingTeacher) {
+        await teacherApi.update(currentSchool.id, editingTeacher.id, payload);
+        toast.success('Teacher updated successfully');
+      }
       setIsModalOpen(false);
       reset();
+      setEditingTeacher(null);
+      setModalMode('create');
       fetchTeachers();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create teacher');
+      toast.error(error.response?.data?.message || `Failed to ${modalMode} teacher`);
     }
+  };
+
+  const openCreate = () => {
+    setModalMode('create');
+    setEditingTeacher(null);
+    reset();
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (teacher: Teacher) => {
+    setModalMode('edit');
+    setEditingTeacher(teacher);
+    reset({
+      fullName: teacher.fullName,
+      email: teacher.email || '',
+      phone: teacher.phone || '',
+      password: '',
+      employeeId: teacher.employeeId || '',
+      specialization: teacher.specialization || '',
+      qualification: teacher.qualification || '',
+    });
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (teacherId: string) => {
@@ -139,8 +180,12 @@ export default function TeachersPage() {
       header: '',
       render: (teacher: Teacher) => (
         <div className="flex gap-2">
-          {hasPermission('teacher.delete') && (
-            <Button variant="ghost" size="sm" onClick={() => handleDelete(teacher.id)}>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(teacher)}>
+            <Pencil className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+          {(isAdmin || hasPermission('teacher.delete')) && (
+            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(teacher.id)}>
               Delete
             </Button>
           )}
@@ -156,26 +201,41 @@ export default function TeachersPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Teachers</h1>
           <p className="text-slate-500 dark:text-slate-400">Manage teaching staff</p>
         </div>
-        {hasPermission('teacher.create') && (
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            Add Teacher
-          </Button>
-        )}
+        <div className="flex gap-3 flex-wrap">
+          <Link href="/students/bulk-enroll?entity=teachers">
+            <Button variant="secondary">
+              <Upload className="w-4 h-4" />
+              Bulk Upload
+            </Button>
+          </Link>
+          {(isAdmin || hasPermission('teacher.create')) && (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4" />
+              Add Teacher
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1 max-w-sm w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search teachers..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="glass-input pl-10"
+                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                className="glass-input pl-10 w-full"
               />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }} className="glass-input w-full sm:w-40">
+                <option value="">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
             </div>
           </div>
         </CardHeader>
@@ -195,8 +255,8 @@ export default function TeachersPage() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); reset(); }}
-        title="Add New Teacher"
+        onClose={() => { setIsModalOpen(false); reset(); setEditingTeacher(null); setModalMode('create'); }}
+        title={modalMode === 'create' ? 'Add New Teacher' : 'Edit Teacher'}
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -216,7 +276,7 @@ export default function TeachersPage() {
               {...register('email')}
               type="email"
               label="Email"
-              placeholder="teacher@email.com"
+              placeholder="[EMAIL_REDACTED]"
               error={errors.email?.message}
             />
             <Input
@@ -237,8 +297,8 @@ export default function TeachersPage() {
             <Input
               {...register('password')}
               type="password"
-              label="Password (optional)"
-              placeholder="Set password to create login account"
+              label={modalMode === 'edit' ? 'Password (leave blank to keep unchanged)' : 'Password (optional)'}
+              placeholder={modalMode === 'edit' ? 'Leave blank to keep current password' : 'Set strong password to create login account'}
               error={errors.password?.message}
             />
           </div>
@@ -247,7 +307,7 @@ export default function TeachersPage() {
               Cancel
             </Button>
             <Button type="submit" isLoading={isSubmitting}>
-              Add Teacher
+              {modalMode === 'create' ? 'Add Teacher' : 'Update Teacher'}
             </Button>
           </div>
         </form>

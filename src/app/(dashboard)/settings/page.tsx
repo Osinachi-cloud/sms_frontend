@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
+import { validatePassword } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { User, Bell, Shield, Palette, School, Trash2, RefreshCw, Camera, Type, Mail, Phone, MapPin, CreditCard, GraduationCap, Award } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -142,6 +143,34 @@ export default function SettingsPage() {
     setIsSaving(true);
     await new Promise((r) => setTimeout(r, 800));
     toast.success('Profile saved successfully');
+    setIsSaving(false);
+  };
+
+  const [passwordError, setPasswordError] = useState('');
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    if (!security.currentPassword) {
+      setPasswordError('Current password is required');
+      return;
+    }
+    if (!security.newPassword) {
+      setPasswordError('New password is required');
+      return;
+    }
+    const passwordValidation = validatePassword(security.newPassword);
+    if (passwordValidation) {
+      setPasswordError(passwordValidation);
+      return;
+    }
+    if (security.newPassword !== security.confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    setIsSaving(true);
+    await new Promise((r) => setTimeout(r, 800));
+    toast.success('Password updated successfully');
+    setSecurity((s) => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }));
     setIsSaving(false);
   };
 
@@ -692,7 +721,8 @@ export default function SettingsPage() {
                   onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
                 />
               </div>
-              <Button onClick={handleSaveProfile} isLoading={isSaving}>Update Password</Button>
+              {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
+              <Button onClick={handleChangePassword} isLoading={isSaving}>Update Password</Button>
             </CardContent>
           </Card>
 
