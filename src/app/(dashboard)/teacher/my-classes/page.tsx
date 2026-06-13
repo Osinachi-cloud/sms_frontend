@@ -12,8 +12,9 @@ import {
   Users,
   BookOpen,
   GraduationCap,
-  ChevronRight,
   Star,
+  Settings,
+  Heart,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -123,8 +124,8 @@ export default function TeacherClassesPage() {
                     <span className="text-lg font-bold">{classItem.studentCount}</span>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Link href={`/students?class=${classItem.classId}`} className="flex-1">
+                  <div className="flex gap-2 flex-wrap">
+                    <Link href={`/students?class=${classItem.classId}${classItem.subjectId ? `&subject=${classItem.subjectId}` : ''}`} className="flex-1">
                       <Button variant="secondary" className="w-full text-sm">
                         View Students
                       </Button>
@@ -134,6 +135,22 @@ export default function TeacherClassesPage() {
                         Grades
                       </Button>
                     </Link>
+                    {classItem.isClassTeacher && (
+                      <>
+                        <Link href={`/teacher/my-subjects?class=${classItem.classId}`} className="w-full">
+                          <Button variant="outline" size="sm" className="w-full text-sm mt-1">
+                            <Settings className="w-3.5 h-3.5 mr-1" />
+                            Manage Subjects
+                          </Button>
+                        </Link>
+                        <Link href={`/teacher/my-students?class=${classItem.classId}`} className="w-full">
+                          <Button variant="secondary" size="sm" className="w-full text-sm mt-1">
+                            <Heart className="w-3.5 h-3.5 mr-1" />
+                            Parents
+                          </Button>
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>

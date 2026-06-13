@@ -7,8 +7,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
-import { studentApi, parentApi, classApi } from '@/lib/api';
-import { getStatusColor, validatePassword } from '@/lib/utils';
+import { studentApi, parentApi, classApi, teacherStudentApi } from '@/lib/api';
+import { getStatusColor, validatePassword, normalizeListResponse } from '@/lib/utils';
 import { Student, PageResponse } from '@/types';
 import { Plus, Search, Upload, User, ArrowRight, Check, ChevronRight, ChevronLeft, Users, LogIn, UserPlus, UserCheck, Pencil } from 'lucide-react';
 import Link from 'next/link';
@@ -35,7 +35,7 @@ interface StudentDraft {
   dateOfBirth: string;
   admissionNumber: string;
   address: string;
-  className: string;
+  classId: string;
   status: string;
 }
 
@@ -65,6 +65,11 @@ export default function StudentsPage() {
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [classesList, setClassesList] = useState<{ id: string; name: string }[]>([]);
 
+  // Query params for teacher class/subject filtering
+  const queryClassId = searchParams.get('class') || '';
+  const querySubjectId = searchParams.get('subject') || '';
+  const isTeacher = currentSchool?.roleName?.toLowerCase() === 'teacher';
+
   // Multi-step form state
   const [step, setStep] = useState<Step>(1);
   const [studentInfo, setStudentInfo] = useState<StudentDraft>({
@@ -76,7 +81,7 @@ export default function StudentsPage() {
     dateOfBirth: '',
     admissionNumber: '',
     address: '',
-    className: '',
+    classId: '',
     status: 'ACTIVE',
   });
   const [parentMode, setParentMode] = useState<ParentMode>('new');
@@ -105,7 +110,7 @@ export default function StudentsPage() {
     dateOfBirth: '',
     admissionNumber: '',
     address: '',
-    className: '',
+    classId: '',
     status: 'ACTIVE',
   });
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
@@ -117,17 +122,34 @@ export default function StudentsPage() {
       return;
     }
     try {
-      const response = await studentApi.getAll(currentSchool.id, {
-        page,
-        size: 10,
-        search: search || undefined,
-        status: statusFilter || undefined,
-      });
-      const data = response.data as PageResponse<Student>;
+      let data: PageResponse<Student> | { content: Student[]; totalPages: number };
+      if (isTeacher) {
+        const response = await teacherStudentApi.getMyStudents(currentSchool.id, {
+          classId: queryClassId || undefined,
+          subjectId: querySubjectId || undefined,
+        });
+        const normalized = normalizeListResponse<Student>(response.data);
+        data = { content: normalized.items, totalPages: normalized.totalPages };
+      } else {
+        const response = await studentApi.getAll(currentSchool.id, {
+          page,
+          size: 10,
+          search: search || undefined,
+          status: statusFilter || undefined,
+          classId: queryClassId || undefined,
+        });
+        data = response.data as PageResponse<Student>;
+      }
       setStudents(data.content);
       setTotalPages(data.totalPages);
       const uniqueClasses = Array.from(new Set(data.content.map((s) => s.className).filter(Boolean))) as string[];
       if (uniqueClasses.length > 0) setAvailableClasses(uniqueClasses);
+
+      // Sync classFilter from query param if we now know the class name
+      if (queryClassId && !classFilter) {
+        const matched = classesList.find((c) => c.id === queryClassId);
+        if (matched) setClassFilter(matched.name);
+      }
     } catch {
       toast.error('Failed to load students');
     } finally {
@@ -161,7 +183,7 @@ export default function StudentsPage() {
   useEffect(() => {
     fetchStudents();
     fetchClasses();
-  }, [currentSchool, page, search, statusFilter]);
+  }, [currentSchool, page, search, statusFilter, queryClassId, querySubjectId]);
 
   useEffect(() => {
     if (searchParams.get('action') === 'add') {
@@ -177,7 +199,7 @@ export default function StudentsPage() {
 
   const resetForm = () => {
     setStep(1);
-    setStudentInfo({ fullName: '', email: '', phone: '', gender: '', password: '', dateOfBirth: '', admissionNumber: '', address: '', className: '', status: 'ACTIVE' });
+    setStudentInfo({ fullName: '', email: '', phone: '', gender: '', password: '', dateOfBirth: '', admissionNumber: '', address: '', classId: '', status: 'ACTIVE' });
     setParentInfo({ fullName: '', email: '', phone: '', relationship: '', address: '', occupation: '', password: '' });
     setParentMode('new');
     setSelectedParentId('');
@@ -225,9 +247,17 @@ export default function StudentsPage() {
     if (!currentSchool) return;
     setIsSubmitting(true);
     try {
-      const studentPayload = {
-        ...studentInfo,
+      const studentPayload: any = {
+        fullName: studentInfo.fullName,
+        email: studentInfo.email || undefined,
+        phone: studentInfo.phone || undefined,
+        gender: studentInfo.gender || undefined,
         password: studentInfo.password || undefined,
+        dateOfBirth: studentInfo.dateOfBirth || undefined,
+        admissionNumber: studentInfo.admissionNumber || undefined,
+        address: studentInfo.address || undefined,
+        classId: studentInfo.classId || undefined,
+        status: studentInfo.status,
       };
 
       // Prepare parent payload
@@ -279,7 +309,7 @@ export default function StudentsPage() {
       dateOfBirth: student.dateOfBirth || '',
       admissionNumber: student.admissionNumber || '',
       address: student.address || '',
-      className: student.className || '',
+      classId: student.classId || '',
       status: student.status || 'ACTIVE',
     });
     setEditErrors({});
@@ -332,6 +362,11 @@ export default function StudentsPage() {
           <div>
             <p className="font-medium">{s.fullName}</p>
             <p className="text-xs text-slate-500">{s.admissionNumber}</p>
+            {isTeacher && s.isClassTeacher && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 mt-0.5">
+                My Class
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -355,10 +390,12 @@ export default function StudentsPage() {
             View
             <ArrowRight className="w-3 h-3 ml-1" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(s); }}>
-            <Pencil className="w-3.5 h-3.5 mr-1" />
-            Edit
-          </Button>
+          {(isAdmin || hasPermission('student.update')) && (
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(s); }}>
+              <Pencil className="w-3.5 h-3.5 mr-1" />
+              Edit
+            </Button>
+          )}
           {(isAdmin || hasPermission('student.delete')) && (
             <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}>
               Delete
@@ -430,7 +467,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto scrollbar-hide">
           <DataTable
             columns={columns}
             data={displayedStudents}
@@ -442,7 +479,17 @@ export default function StudentsPage() {
             onPageChange={setPage}
             mobileCardRender={(s: Student) => (
               <div className="space-y-2 cursor-pointer" onClick={() => router.push(`/students/${s.id}`)}>
-                <div className="flex items-center justify-between"><span className="text-xs text-slate-500">Name</span><span className="text-sm font-medium">{s.fullName}</span></div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Name</span>
+                  <div className="text-right">
+                    <span className="text-sm font-medium">{s.fullName}</span>
+                    {isTeacher && s.isClassTeacher && (
+                      <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">
+                        My Class
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="flex items-center justify-between"><span className="text-xs text-slate-500">Admission #</span><span className="text-sm">{s.admissionNumber}</span></div>
                 <div className="flex items-center justify-between"><span className="text-xs text-slate-500">Class</span><span className="text-sm">{s.className || '-'}</span></div>
                 <div className="flex items-center justify-between"><span className="text-xs text-slate-500">Status</span><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(s.status)}`}>{s.status}</span></div>
@@ -534,10 +581,10 @@ export default function StudentsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Class</label>
-                <select value={studentInfo.className} onChange={(e) => setStudentInfo((p) => ({ ...p, className: e.target.value }))} className="glass-input w-full">
+                <select value={studentInfo.classId} onChange={(e) => setStudentInfo((p) => ({ ...p, classId: e.target.value }))} className="glass-input w-full">
                   <option value="">Select a class</option>
                   {classesList.map((cls) => (
-                    <option key={cls.id} value={cls.name}>{cls.name}</option>
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
                   ))}
                   {classesList.length === 0 && <option value="" disabled>No classes available</option>}
                 </select>
@@ -651,7 +698,7 @@ export default function StudentsPage() {
               <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                 <p className="text-xs text-slate-500">Choose an existing parent/guardian already in the system.</p>
                 {errors.parentSelect && <p className="text-red-500 text-xs">{errors.parentSelect}</p>}
-                <div className="max-h-60 overflow-y-auto space-y-2">
+                <div className="max-h-60 overflow-y-auto scrollbar-hide space-y-2">
                   {existingParents.length === 0 ? (
                     <p className="text-sm text-slate-400 text-center py-4">No existing parents found. Create a new one instead.</p>
                   ) : (
@@ -720,7 +767,7 @@ export default function StudentsPage() {
                 <div><span className="text-slate-400">Email:</span> <span className="font-medium">{studentInfo.email || '-'}</span></div>
                 <div><span className="text-slate-400">Phone:</span> <span className="font-medium">{studentInfo.phone || '-'}</span></div>
                 <div><span className="text-slate-400">Gender:</span> <span className="font-medium">{studentInfo.gender || '-'}</span></div>
-                <div><span className="text-slate-400">Class:</span> <span className="font-medium">{studentInfo.className || '-'}</span></div>
+                <div><span className="text-slate-400">Class:</span> <span className="font-medium">{classesList.find(c => c.id === studentInfo.classId)?.name || '-'}</span></div>
                 <div><span className="text-slate-400">DOB:</span> <span className="font-medium">{studentInfo.dateOfBirth || '-'}</span></div>
                 <div className="col-span-2"><span className="text-slate-400">Address:</span> <span className="font-medium">{studentInfo.address || '-'}</span></div>
               </div>
@@ -830,10 +877,10 @@ export default function StudentsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Class</label>
-              <select value={editForm.className} onChange={(e) => setEditForm((p) => ({ ...p, className: e.target.value }))} className="glass-input w-full">
+              <select value={editForm.classId} onChange={(e) => setEditForm((p) => ({ ...p, classId: e.target.value }))} className="glass-input w-full">
                 <option value="">Select a class</option>
                 {classesList.map((cls) => (
-                  <option key={cls.id} value={cls.name}>{cls.name}</option>
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
               </select>
             </div>

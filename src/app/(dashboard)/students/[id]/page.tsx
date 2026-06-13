@@ -31,6 +31,18 @@ import { Badge } from '@/components/ui/Badge';
 import { DataTable } from '@/components/ui/DataTable';
 import { StudentDetail, Payment, Grade } from '@/types';
 import toast from 'react-hot-toast';
+import { normalizeListResponse } from '@/lib/utils';
+
+interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  classId?: string;
+  className?: string;
+  date: string;
+  status: string;
+  remarks?: string;
+}
 
 const tabs = [
   { key: 'overview', label: 'Overview', icon: User },
@@ -51,6 +63,7 @@ export default function StudentDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [payments, setPayments] = useState<Payment[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
   const fetchStudent = async () => {
@@ -88,11 +101,25 @@ export default function StudentDetailPage() {
           Promise.resolve({ data: [] }),
         ]);
         if (paymentsRes.status === 'fulfilled') {
-          setPayments((paymentsRes.value as any).data?.content || []);
+          setPayments(normalizeListResponse<any>((paymentsRes.value as any).data).items);
         }
       } else if (activeTab === 'performance') {
         const res = await gradeApi.getStudentGrades(currentSchool.id, studentId);
         setGrades((res.data as any) || []);
+      } else if (activeTab === 'attendance') {
+        const [recordsRes, summaryRes] = await Promise.allSettled([
+          attendanceApi.getStudentAttendance(currentSchool.id, studentId),
+          attendanceApi.getStudentAttendanceSummary(currentSchool.id, studentId),
+        ]);
+        if (recordsRes.status === 'fulfilled') {
+          setAttendanceRecords((recordsRes.value as any).data || []);
+        }
+        if (summaryRes.status === 'fulfilled') {
+          const summary = (summaryRes.value as any).data;
+          if (summary) {
+            setStudent((prev) => (prev ? { ...prev, attendanceSummary: summary } : prev));
+          }
+        }
       }
     } catch {
       // silent for tab data
@@ -110,6 +137,12 @@ export default function StudentDetailPage() {
       fetchTabData();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (student?.limitedView && activeTab !== 'overview' && activeTab !== 'performance') {
+      setActiveTab('overview');
+    }
+  }, [student?.limitedView]);
 
   if (isLoading) {
     return (
@@ -158,7 +191,10 @@ export default function StudentDetailPage() {
       {/* Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-700 overflow-x-auto scrollbar-hide">
         <div className="flex gap-1 min-w-max">
-          {tabs.map((tab) => {
+          {(student?.limitedView
+            ? tabs.filter((t) => t.key === 'overview' || t.key === 'performance')
+            : tabs
+          ).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
             return (
@@ -265,111 +301,117 @@ export default function StudentDetailPage() {
             </Card>
 
             {/* Academic Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary-500" />
-                  Academic Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-center">
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {student.className || '-'}
-                    </p>
-                    <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">Current Class</p>
+            {!student.limitedView && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-primary-500" />
+                    Academic Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-center">
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {student.className || '-'}
+                      </p>
+                      <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">Current Class</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 text-center">
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {student.grades?.length || 0}
+                      </p>
+                      <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">Total Grades</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-center">
+                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {student.reportCards?.length || 0}
+                      </p>
+                      <p className="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">Report Cards</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-center">
+                      <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {student.attendanceSummary?.attendancePercentage ?? '-'}%
+                      </p>
+                      <p className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">Attendance</p>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 text-center">
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {student.grades?.length || 0}
-                    </p>
-                    <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">Total Grades</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-center">
-                    <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                      {student.reportCards?.length || 0}
-                    </p>
-                    <p className="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">Report Cards</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-center">
-                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                      {student.attendanceSummary?.attendancePercentage ?? '-'}%
-                    </p>
-                    <p className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">Attendance</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Parents */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary-500" />
-                  Parents / Guardians
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {student.parents && student.parents.length > 0 ? (
-                  <div className="space-y-4">
-                    {student.parents.map((parent, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                        <p className="font-medium">{parent.fullName}</p>
-                        <p className="text-xs text-slate-500">{parent.relationship || 'Guardian'}</p>
-                        {parent.phone && (
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                            <Phone className="w-3 h-3" /> {parent.phone}
-                          </p>
-                        )}
-                        {parent.email && (
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Mail className="w-3 h-3" /> {parent.email}
-                          </p>
-                        )}
-                        {parent.address && (
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3" /> {parent.address}
-                          </p>
-                        )}
+            {!student.limitedView && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary-500" />
+                      Parents / Guardians
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {student.parents && student.parents.length > 0 ? (
+                      <div className="space-y-4">
+                        {student.parents.map((parent, idx) => (
+                          <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                            <p className="font-medium">{parent.fullName}</p>
+                            <p className="text-xs text-slate-500">{parent.relationship || 'Guardian'}</p>
+                            {parent.phone && (
+                              <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                                <Phone className="w-3 h-3" /> {parent.phone}
+                              </p>
+                            )}
+                            {parent.email && (
+                              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Mail className="w-3 h-3" /> {parent.email}
+                              </p>
+                            )}
+                            {parent.address && (
+                              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3" /> {parent.address}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-slate-400">
-                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No parent/guardian records</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    ) : (
+                      <div className="text-center py-6 text-slate-400">
+                        <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No parent/guardian records</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-primary-500" />
-                  Fee Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-green-50 dark:bg-green-900/20">
-                  <span className="text-sm text-green-700 dark:text-green-400">Total Paid</span>
-                  <span className="font-bold text-green-700 dark:text-green-400">
-                    ₦{(student.payments?.reduce((sum, p) => sum + (p.status === 'SUCCESS' ? p.amount : 0), 0) || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-900/20">
-                  <span className="text-sm text-red-700 dark:text-red-400">Fees Owed</span>
-                  <span className="font-bold text-red-700 dark:text-red-400">
-                    ₦{(student.feesDue?.reduce((sum, f) => sum + (f.status === 'PENDING' || f.status === 'OVERDUE' ? f.amount : 0), 0) || 0).toLocaleString()}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+                {/* Quick Stats */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-primary-500" />
+                      Fee Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-green-50 dark:bg-green-900/20">
+                      <span className="text-sm text-green-700 dark:text-green-400">Total Paid</span>
+                      <span className="font-bold text-green-700 dark:text-green-400">
+                        ₦{(student.payments?.reduce((sum, p) => sum + (p.status === 'SUCCESS' ? p.amount : 0), 0) || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-900/20">
+                      <span className="text-sm text-red-700 dark:text-red-400">Fees Owed</span>
+                      <span className="font-bold text-red-700 dark:text-red-400">
+                        ₦{(student.feesDue?.reduce((sum, f) => sum + (f.status === 'PENDING' || f.status === 'OVERDUE' ? f.amount : 0), 0) || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </motion.div>
       )}
@@ -563,6 +605,33 @@ export default function StudentDetailPage() {
                     <span>Excused: {student.attendanceSummary.excusedDays} days</span>
                     <span>Rate: {student.attendanceSummary.attendancePercentage}%</span>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Attendance Records</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DataTable
+                    columns={[
+                      { key: 'date', header: 'Date', render: (r: AttendanceRecord) => new Date(r.date).toLocaleDateString() },
+                      { key: 'status', header: 'Status', render: (r: AttendanceRecord) => (
+                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                          r.status === 'PRESENT' ? 'bg-green-100 text-green-700' :
+                          r.status === 'ABSENT' ? 'bg-red-100 text-red-700' :
+                          r.status === 'LATE' ? 'bg-amber-100 text-amber-700' :
+                          r.status === 'EXCUSED' ? 'bg-blue-100 text-blue-700' :
+                          'bg-slate-100 text-slate-700'
+                        }`}>{r.status}</span>
+                      )},
+                      { key: 'remarks', header: 'Remarks', render: (r: AttendanceRecord) => r.remarks || '-' },
+                    ]}
+                    data={attendanceRecords}
+                    keyField="id"
+                    isLoading={isDataLoading}
+                    emptyMessage="No attendance records found"
+                  />
                 </CardContent>
               </Card>
             </>

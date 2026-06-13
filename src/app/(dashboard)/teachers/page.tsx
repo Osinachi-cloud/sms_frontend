@@ -239,7 +239,7 @@ export default function TeachersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto scrollbar-hide">
           <DataTable
             columns={columns}
             data={teachers}

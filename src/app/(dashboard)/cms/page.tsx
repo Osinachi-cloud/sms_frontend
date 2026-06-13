@@ -79,7 +79,7 @@ export default function CMSPage() {
       ]);
       setContent((contentRes.data as PageResponse<ContentItem>).content);
       setPendingCount((pendingRes.data as PageResponse<ContentItem>).totalElements);
-      setFolders(foldersRes.data as ContentFolder[]);
+      setFolders((foldersRes.data as any)?.content || []);
     } catch (error) {
       toast.error('Failed to load content');
     } finally {

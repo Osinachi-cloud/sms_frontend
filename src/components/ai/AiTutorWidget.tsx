@@ -158,7 +158,7 @@ export function AiTutorWidget() {
 
             {!isMinimized && (
               <>
-                <div className="h-96 overflow-y-auto p-4 space-y-4">
+                <div className="h-96 overflow-y-auto scrollbar-hide p-4 space-y-4">
                   {messages.length === 0 ? (
                     <div className="text-center py-8">
                       <div className="w-16 h-16 mx-auto rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4">

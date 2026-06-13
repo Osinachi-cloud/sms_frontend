@@ -255,7 +255,7 @@ export default function RolesPage() {
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
               Permissions ({selectedPermissions.size} selected)
             </label>
-            <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-80 overflow-y-auto scrollbar-hide pr-2">
               {Object.entries(permissions).map(([category, perms]) => {
                 const categorySelected = perms.filter(p => selectedPermissions.has(p.key)).length;
                 return (

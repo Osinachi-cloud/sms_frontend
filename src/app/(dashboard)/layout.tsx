@@ -3,7 +3,6 @@
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { AiTutorWidget } from '@/components/ai/AiTutorWidget';
-import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { useAuth } from '@/lib/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, ReactNode } from 'react';
@@ -88,7 +87,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
       <AiTutorWidget />
-      <OnboardingTour />
     </div>
   );
 }

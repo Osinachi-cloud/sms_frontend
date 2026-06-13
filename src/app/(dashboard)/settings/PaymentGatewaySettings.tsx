@@ -72,7 +72,7 @@ export default function PaymentGatewaySettings({ schoolId }: { schoolId: string 
     setConfig((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const isAdmin = isAppAdmin() || currentSchool?.roleName === 'ACCOUNTANT' || hasPermission('payment.gateway.manage');
+  const isAdmin = isAppAdmin() || currentSchool?.roleName === 'ACCOUNTANT' || hasPermission('payment.gateway.switch') || hasPermission('payment.gateway.manage');
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">

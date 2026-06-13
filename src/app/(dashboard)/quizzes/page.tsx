@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { ClipboardList, Clock, Play, Eye, Plus, CheckCircle, XCircle, Trophy } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { normalizeListResponse } from '@/lib/utils';
 
 export default function QuizzesPage() {
   const { currentSchool, user } = useAuth();
@@ -32,7 +33,7 @@ export default function QuizzesPage() {
   const loadQuizzes = async () => {
     setLoading(true);
     const res = await quizApi.getAll(currentSchool!.id, { size: 50 });
-    setQuizzes(res.data?.content || []);
+    setQuizzes(normalizeListResponse<any>(res.data).items);
     setLoading(false);
   };
 

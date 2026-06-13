@@ -76,6 +76,7 @@ export interface Student {
   status: string;
   metadata: Record<string, any>;
   createdAt: string;
+  isClassTeacher?: boolean;
 }
 
 export interface Teacher {
@@ -321,6 +322,7 @@ export interface StudentDetail extends Student {
   className?: string;
   classTeacherName?: string;
   section?: string;
+  limitedView?: boolean;
   parents: {
     id?: string;
     fullName: string;

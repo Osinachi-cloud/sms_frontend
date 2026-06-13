@@ -62,3 +62,18 @@ export function validatePassword(password?: string): string | null {
   if (!PASSWORD_REGEX.test(password)) return PASSWORD_REQUIREMENTS;
   return null;
 }
+
+/**
+ * Normalizes API list responses.
+ * Some endpoints return a Page object { content: T[], totalPages: number }
+ * while others return a plain T[].
+ */
+export function normalizeListResponse<T>(data: any): { items: T[]; totalPages: number } {
+  if (Array.isArray(data)) {
+    return { items: data, totalPages: 1 };
+  }
+  if (data && Array.isArray(data.content)) {
+    return { items: data.content, totalPages: data.totalPages ?? 1 };
+  }
+  return { items: [], totalPages: 1 };
+}

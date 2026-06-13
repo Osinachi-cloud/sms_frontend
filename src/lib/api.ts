@@ -146,7 +146,7 @@ export const roleApi = {
 };
 
 export const studentApi = {
-  getAll: (schoolId: string, params?: { page?: number; size?: number; search?: string; status?: string }) =>
+  getAll: (schoolId: string, params?: { page?: number; size?: number; search?: string; status?: string; classId?: string }) =>
     api.get(`/api/schools/${schoolId}/students`, { params }),
 
   getOne: (schoolId: string, studentId: string) =>
@@ -188,7 +188,8 @@ export const userApi = {
 };
 
 export const cmsApi = {
-  getFolders: (schoolId: string) => api.get(`/api/schools/${schoolId}/cms/folders`),
+  getFolders: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/cms/folders`, { params }),
 
   createFolder: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/cms/folders`, data),
@@ -269,11 +270,54 @@ export const gradeApi = {
 };
 
 export const attendanceApi = {
-  getStudentAttendance: (schoolId: string, studentId: string) =>
-    api.get(`/api/schools/${schoolId}/students/${studentId}/attendance`),
+  // Student endpoints (new paths)
+  getStudentAttendance: (schoolId: string, studentId: string, params?: { startDate?: string; endDate?: string }) =>
+    api.get(`/api/schools/${schoolId}/attendance/students/${studentId}`, { params }),
 
   getStudentAttendanceSummary: (schoolId: string, studentId: string) =>
-    api.get(`/api/schools/${schoolId}/students/${studentId}/attendance/summary`),
+    api.get(`/api/schools/${schoolId}/attendance/students/${studentId}/summary`),
+
+  // Class endpoints (teacher)
+  getClassAttendance: (schoolId: string, classId: string, date: string) =>
+    api.get(`/api/schools/${schoolId}/attendance/class/${classId}`, { params: { date } }),
+
+  getClassReport: (schoolId: string, classId: string, params: { startDate: string; endDate: string }) =>
+    api.get(`/api/schools/${schoolId}/attendance/class/${classId}/report`, { params }),
+
+  mark: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/attendance/mark`, data),
+
+  edit: (schoolId: string, attendanceId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/attendance/${attendanceId}`, data),
+
+  // Parent endpoints
+  getChildrenAttendance: (schoolId: string, parentId: string) =>
+    api.get(`/api/schools/${schoolId}/attendance/parents/${parentId}/children`),
+
+  // Bulk upload
+  bulkUpload: (schoolId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/schools/${schoolId}/attendance/bulk-upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  downloadTemplate: (schoolId: string, filename = 'attendance_template.xlsx') => {
+    return api.get(`/api/schools/${schoolId}/attendance/template`, {
+      responseType: 'blob',
+    }).then((res) => {
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    });
+  },
 };
 
 export const onboardingApi = {
@@ -286,7 +330,8 @@ export const onboardingApi = {
 export const notificationApi = {
   getAll: (params?: { page?: number; size?: number }) =>
     api.get('/api/notifications', { params }),
-  getUnread: () => api.get('/api/notifications/unread'),
+  getUnread: (params?: { page?: number; size?: number }) =>
+    api.get('/api/notifications/unread', { params }),
   getCount: () => api.get('/api/notifications/count'),
   markAsRead: (id: string) => api.post(`/api/notifications/${id}/read`),
   markAllAsRead: () => api.post('/api/notifications/read-all'),
@@ -295,8 +340,8 @@ export const notificationApi = {
 export const announcementApi = {
   getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/announcements`, { params }),
-  getActive: (schoolId: string) =>
-    api.get(`/api/schools/${schoolId}/announcements/active`),
+  getActive: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/announcements/active`, { params }),
   create: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/announcements`, data),
 };
@@ -304,15 +349,15 @@ export const announcementApi = {
 export const eventApi = {
   getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/events`, { params }),
-  getUpcoming: (schoolId: string) =>
-    api.get(`/api/schools/${schoolId}/events/upcoming`),
+  getUpcoming: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/events/upcoming`, { params }),
   create: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/events`, data),
 };
 
 export const messageApi = {
-  getConversations: (schoolId: string) =>
-    api.get(`/api/schools/${schoolId}/messages/conversations`),
+  getConversations: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/messages/conversations`, { params }),
   createConversation: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/messages/conversations`, data),
   getMessages: (conversationId: string, params?: { page?: number; size?: number }) =>
@@ -328,8 +373,8 @@ export const parentApi = {
     api.get(`/api/schools/${schoolId}/parents`, { params }),
   create: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/parents`, data),
-  getByStudent: (studentId: string) =>
-    api.get(`/api/schools/any/parents/student/${studentId}`),
+  getByStudent: (schoolId: string, studentId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/parents/student/${studentId}`, { params }),
 };
 
 export const quizApi = {
@@ -359,8 +404,8 @@ export const classApi = {
 };
 
 export const timetableApi = {
-  getPeriods: (schoolId: string) =>
-    api.get(`/api/schools/${schoolId}/timetable/periods`),
+  getPeriods: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/timetable/periods`, { params }),
   createPeriod: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/timetable/periods`, data),
   getClassTimetable: (schoolId: string, classId: string) =>
@@ -379,8 +424,10 @@ export const libraryApi = {
 };
 
 export const gamificationApi = {
-  getBadges: (schoolId: string) =>
-    api.get(`/api/schools/${schoolId}/gamification/badges`),
+  getBadges: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/gamification/badges`, { params }),
+  getUserBadges: (schoolId: string, userId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/gamification/users/${userId}/badges`, { params }),
   getLeaderboard: (schoolId: string, limit?: number) =>
     api.get(`/api/schools/${schoolId}/gamification/leaderboard`, { params: { limit } }),
   getUserPoints: (schoolId: string, userId: string) =>
@@ -399,15 +446,15 @@ export const admissionApi = {
 export const reportCardApi = {
   getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/report-cards`, { params }),
-  getStudentCards: (studentId: string) =>
-    api.get(`/api/schools/any/report-cards/student/${studentId}`),
+  getStudentCards: (studentId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/any/report-cards/student/${studentId}`, { params }),
   generate: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/report-cards`, data),
 };
 
 export const idCardApi = {
-  getTemplates: (schoolId: string) =>
-    api.get(`/api/schools/${schoolId}/id-cards/templates`),
+  getTemplates: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/id-cards/templates`, { params }),
   createTemplate: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/id-cards/templates`, data),
   generate: (schoolId: string, data: any) =>
@@ -444,6 +491,87 @@ export const settingsApi = {
     api.get(`/api/schools/${schoolId}/settings`),
   update: (schoolId: string, data: any) =>
     api.put(`/api/schools/${schoolId}/settings`, data),
+};
+
+export const enrollmentApi = {
+  getStudentEnrollments: (schoolId: string, studentId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/enrollments/students/${studentId}`, { params }),
+  getSubjectEnrollments: (schoolId: string, subjectId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/enrollments/subjects/${subjectId}`, { params }),
+  enroll: (schoolId: string, studentId: string, subjectId: string) =>
+    api.post(`/api/schools/${schoolId}/enrollments/students/${studentId}/subjects/${subjectId}`),
+  pay: (schoolId: string, studentId: string, subjectId: string, callbackUrl?: string) =>
+    api.post(`/api/schools/${schoolId}/enrollments/students/${studentId}/subjects/${subjectId}/pay`, { callbackUrl }),
+  confirmPayment: (schoolId: string, studentId: string, subjectId: string, paymentId: string) =>
+    api.post(`/api/schools/${schoolId}/enrollments/students/${studentId}/subjects/${subjectId}/confirm-payment`, { paymentId }),
+  drop: (schoolId: string, enrollmentId: string) =>
+    api.delete(`/api/schools/${schoolId}/enrollments/${enrollmentId}`),
+};
+
+export const temporaryPermissionApi = {
+  getUserPermissions: (schoolId: string, userId: string) =>
+    api.get(`/api/schools/${schoolId}/temporary-permissions/users/${userId}`),
+  grant: (schoolId: string, userId: string, data: { permissionKey: string; expiresAt: string }) =>
+    api.post(`/api/schools/${schoolId}/temporary-permissions/users/${userId}`, data),
+  revoke: (schoolId: string, permissionId: string) =>
+    api.delete(`/api/schools/${schoolId}/temporary-permissions/${permissionId}`),
+};
+
+export const courseContentApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/course-contents`, { params }),
+  getBySubject: (schoolId: string, subjectId: string, studentId?: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/course-contents/subject/${subjectId}`, { params: { studentId, ...params } }),
+  getByClass: (schoolId: string, classId: string, studentId?: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/course-contents/class/${classId}`, { params: { studentId, ...params } }),
+  getByTeacher: (schoolId: string, teacherId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/course-contents/teacher/${teacherId}`, { params }),
+  getOne: (schoolId: string, contentId: string, studentId?: string) =>
+    api.get(`/api/schools/${schoolId}/course-contents/${contentId}`, { params: { studentId } }),
+  create: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/course-contents`, data),
+  update: (schoolId: string, contentId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/course-contents/${contentId}`, data),
+  delete: (schoolId: string, contentId: string) =>
+    api.delete(`/api/schools/${schoolId}/course-contents/${contentId}`),
+};
+
+export const subjectApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/subjects`, { params }),
+  getForStudent: (schoolId: string, studentId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/subjects/student/${studentId}`, { params }),
+  create: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/subjects`, data),
+  update: (schoolId: string, subjectId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/subjects/${subjectId}`, data),
+  delete: (schoolId: string, subjectId: string) =>
+    api.delete(`/api/schools/${schoolId}/subjects/${subjectId}`),
+};
+
+export const teacherAssignmentApi = {
+  getByClass: (schoolId: string, classId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/teacher-assignments/classes/${classId}`, { params }),
+  getByTeacher: (schoolId: string, teacherId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/teacher-assignments/teachers/${teacherId}`, { params }),
+  assign: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/teacher-assignments`, data),
+  remove: (schoolId: string, assignmentId: string) =>
+    api.delete(`/api/schools/${schoolId}/teacher-assignments/${assignmentId}`),
+};
+
+export const teacherStudentApi = {
+  getStudents: (schoolId: string, teacherId: string, params?: { classId?: string; subjectId?: string; page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/teacher-students/teachers/${teacherId}`, { params }),
+
+  getMyStudents: (schoolId: string, params?: { classId?: string; subjectId?: string; page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/teacher-students/me`, { params }),
+
+  getMyStudentsWithParents: (schoolId: string, params?: { classId?: string; subjectId?: string; page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/teacher-students/me/with-parents`, { params }),
+
+  getStudentParents: (schoolId: string, studentId: string) =>
+    api.get(`/api/schools/${schoolId}/teacher-students/students/${studentId}/parents`),
 };
 
 const rawApi = axios.create({
@@ -531,12 +659,65 @@ export const rawAnalyticsApi = {
 };
 
 export const promotionApi = {
-  getEligibleStudents: (schoolId: string, classId: string) =>
-    api.get(`/api/schools/${schoolId}/promotions/classes/${classId}`),
+  getEligibleStudents: (schoolId: string, classId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/promotions/classes/${classId}`, { params }),
   promoteStudent: (schoolId: string, studentId: string, force = false) =>
     api.post(`/api/schools/${schoolId}/promotions/students/${studentId}?force=${force}`),
   promoteBatch: (schoolId: string, classId: string, studentIds: string[]) =>
     api.post(`/api/schools/${schoolId}/promotions/classes/${classId}/batch`, { studentIds }),
+};
+
+export const academicSessionApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/sessions`, { params }),
+  getCurrent: (schoolId: string) => api.get(`/api/schools/${schoolId}/sessions/current`),
+  create: (schoolId: string, data: any) => api.post(`/api/schools/${schoolId}/sessions`, data),
+  update: (schoolId: string, sessionId: string, data: any) => api.put(`/api/schools/${schoolId}/sessions/${sessionId}`, data),
+  delete: (schoolId: string, sessionId: string) => api.delete(`/api/schools/${schoolId}/sessions/${sessionId}`),
+};
+
+export const termApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/terms`, { params }),
+  getCurrent: (schoolId: string) => api.get(`/api/schools/${schoolId}/terms/current`),
+  getBySession: (schoolId: string, sessionId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/terms/session/${sessionId}`, { params }),
+  create: (schoolId: string, data: any) => api.post(`/api/schools/${schoolId}/terms`, data),
+  update: (schoolId: string, termId: string, data: any) => api.put(`/api/schools/${schoolId}/terms/${termId}`, data),
+  delete: (schoolId: string, termId: string) => api.delete(`/api/schools/${schoolId}/terms/${termId}`),
+};
+
+export const holidayApi = {
+  getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/holidays`, { params }),
+  create: (schoolId: string, data: any) => api.post(`/api/schools/${schoolId}/holidays`, data),
+  update: (schoolId: string, holidayId: string, data: any) => api.put(`/api/schools/${schoolId}/holidays/${holidayId}`, data),
+  delete: (schoolId: string, holidayId: string) => api.delete(`/api/schools/${schoolId}/holidays/${holidayId}`),
+  previewBulkUpload: (schoolId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/schools/${schoolId}/holidays/bulk-upload/preview`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  bulkUpload: (schoolId: string, holidays: any[]) => {
+    return api.post(`/api/schools/${schoolId}/holidays/bulk-upload`, holidays);
+  },
+  downloadTemplate: (schoolId: string, filename = 'holiday_template.xlsx') => {
+    return api.get(`/api/schools/${schoolId}/holidays/template`, {
+      responseType: 'blob',
+    }).then((res) => {
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    });
+  },
 };
 
 export default api;

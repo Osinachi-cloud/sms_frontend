@@ -322,7 +322,7 @@ export default function AdmissionsPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto scrollbar-hide">
           <DataTable
             columns={columns}
             data={filteredApps}
@@ -452,11 +452,11 @@ export default function AdmissionsPage() {
         size="xl"
       >
         {selectedApp && (
-          <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-1">
+          <div className="space-y-6 max-h-[80vh] overflow-y-auto scrollbar-hide pr-1">
             {/* Admission Stage Pipeline */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Admission Progress</h3>
-              <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2">
+              <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto scrollbar-hide pb-2">
                 {pipelineStages.map((stage, idx) => {
                   const currentIdx = getStageIndex(selectedApp.status);
                   const isActive = stage.key === selectedApp.status;

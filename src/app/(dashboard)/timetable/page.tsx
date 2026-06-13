@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Clock, Plus, BookOpen, Users, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { normalizeListResponse } from '@/lib/utils';
 
 const defaultClasses = [
   { id: 'c1', name: 'JSS 1' },
@@ -52,7 +53,7 @@ export default function TimetablePage() {
     setLoading(true);
     try {
       const res = await timetableApi.getPeriods(currentSchool!.id);
-      setPeriods(res.data || []);
+      setPeriods(normalizeListResponse<any>(res.data).items);
     } catch {
       setPeriods([]);
     } finally {
@@ -119,7 +120,7 @@ export default function TimetablePage() {
 
       {/* Desktop View - Grid */}
       <div className="hidden lg:block glass-card rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-hide">
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">

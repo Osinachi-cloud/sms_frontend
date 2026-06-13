@@ -431,7 +431,7 @@ export default function CreateContentPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-hide">
               {versions.length === 0 ? (
                 <p className="text-center text-slate-500 py-8">No version history available</p>
               ) : (

@@ -54,7 +54,7 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div>
       {/* Desktop table view */}
-      <div className="hidden sm:block overflow-x-auto -mx-4 px-4">
+      <div className="hidden sm:block overflow-x-auto scrollbar-hide -mx-4 px-4">
         <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700">

@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import { cn, normalizeListResponse } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { Bell, Moon, Sun, Search, ChevronDown, X, MessageSquare, Check, Shield, GraduationCap, BookOpen, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -45,7 +45,7 @@ export function Header() {
   useEffect(() => {
     if (currentSchool?.id) {
       notificationApi.getCount().then((r) => setNotifCount(r.data));
-      notificationApi.getUnread().then((r) => setNotifications(r.data));
+      notificationApi.getUnread().then((r) => setNotifications(normalizeListResponse<any>(r.data).items));
     }
   }, [currentSchool]);
 

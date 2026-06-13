@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { CreditCard, Users, Download, Printer, QrCode, GraduationCap } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { normalizeListResponse } from '@/lib/utils';
 
 export default function IdCardsPage() {
   const { currentSchool } = useAuth();
@@ -28,9 +29,9 @@ export default function IdCardsPage() {
       idCardApi.getAll(currentSchool.id, { size: 100 }),
       idCardApi.getTemplates(currentSchool.id),
     ]);
-    setStudents(sRes.data?.content || []);
-    setIdCards(iRes.data?.content || []);
-    setTemplates(tRes.data || []);
+    setStudents(normalizeListResponse<any>(sRes.data).items);
+    setIdCards(normalizeListResponse<any>(iRes.data).items);
+    setTemplates(normalizeListResponse<any>(tRes.data).items);
     setLoading(false);
   };
 

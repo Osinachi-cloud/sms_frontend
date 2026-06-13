@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { School, Users, Check, AlertCircle, GraduationCap, ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { normalizeListResponse } from '@/lib/utils';
 
 interface StudentPromotionInfo {
   studentId: string;
@@ -43,7 +44,7 @@ export default function PromotionsPage() {
     if (!currentSchool) return;
     classApi.getAll(currentSchool.id, { size: 100 })
       .then((res: any) => {
-        const data = res.data?.content || [];
+        const data = normalizeListResponse<any>(res.data).items;
         setClasses(data);
         if (data.length > 0) setSelectedClassId(data[0].id);
       })
@@ -55,7 +56,7 @@ export default function PromotionsPage() {
     setIsLoading(true);
     promotionApi.getEligibleStudents(currentSchool.id, selectedClassId)
       .then((res: any) => {
-        setStudents(res.data || []);
+        setStudents(normalizeListResponse<any>(res.data).items);
         setSelectedStudentIds(new Set());
       })
       .catch(() => toast.error('Failed to load students'))
@@ -108,7 +109,7 @@ export default function PromotionsPage() {
       toast.success(`${result.promoted} promoted, ${result.failed} failed`);
       // Refresh list
       const refresh = await promotionApi.getEligibleStudents(currentSchool.id, selectedClassId);
-      setStudents(refresh.data || []);
+      setStudents(normalizeListResponse<any>(refresh.data).items);
       setSelectedStudentIds(new Set());
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Batch promotion failed');
@@ -184,7 +185,7 @@ export default function PromotionsPage() {
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto scrollbar-hide">
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (

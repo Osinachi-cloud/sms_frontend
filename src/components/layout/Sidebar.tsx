@@ -60,6 +60,7 @@ const schoolAdminNavItems: NavItem[] = [
   { name: 'Promotions', href: '/promotions', icon: GraduationCap },
   { name: 'CMS', href: '/cms', icon: BookOpen, permission: 'cms.content.read' },
   { name: 'Calendar', href: '/calendar', icon: CalendarDays },
+  { name: 'Holidays', href: '/holidays', icon: CalendarDays },
   { name: 'Timetable', href: '/timetable', icon: Clock },
   { name: 'Quizzes', href: '/quizzes', icon: ClipboardList },
   { name: 'Library', href: '/library', icon: Library },
@@ -90,6 +91,7 @@ const studentNavItems: NavItem[] = [
 const teacherNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Classes', href: '/teacher/my-classes', icon: School },
+  { name: 'My Subjects', href: '/teacher/my-subjects', icon: BookOpen },
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Attendance', href: '/teacher/attendance', icon: CalendarDays },
   { name: 'Gradebook', href: '/teacher/gradebook', icon: Award },

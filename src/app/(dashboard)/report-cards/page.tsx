@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { FileText, Download, Eye, TrendingUp, Award, Calendar } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { normalizeListResponse } from '@/lib/utils';
 
 export default function ReportCardsPage() {
   const { currentSchool } = useAuth();
@@ -28,7 +29,8 @@ export default function ReportCardsPage() {
   useEffect(() => {
     if (currentSchool?.id) {
       reportCardApi.getAll(currentSchool.id, { size: 20 }).then((r) => {
-        setReportCards(r.data?.content?.length ? r.data.content : demoCards);
+        const items = normalizeListResponse<any>(r.data).items;
+        setReportCards(items.length ? items : demoCards);
       }).catch(() => setReportCards(demoCards));
     }
   }, [currentSchool]);

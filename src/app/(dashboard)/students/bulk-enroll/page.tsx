@@ -499,7 +499,7 @@ export default function BulkEnrollPage() {
               )}
             </AnimatePresence>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
@@ -622,7 +622,7 @@ export default function BulkEnrollPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto scrollbar-hide">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b dark:border-slate-700">
@@ -753,7 +753,7 @@ export default function BulkEnrollPage() {
                 {currentJob.errorLog && (
                   <div className="mb-8">
                     <h3 className="font-medium mb-2">Error Log</h3>
-                    <div className="max-h-48 overflow-y-auto p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                    <div className="max-h-48 overflow-y-auto scrollbar-hide p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                       <pre className="text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap">{currentJob.errorLog}</pre>
                     </div>
                   </div>

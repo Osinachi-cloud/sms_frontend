@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Library, Search, BookOpen, Download, Plus, FileText, Headphones, Video } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { normalizeListResponse } from '@/lib/utils';
 
 export default function LibraryPage() {
   const { currentSchool } = useAuth();
@@ -33,7 +34,8 @@ export default function LibraryPage() {
     setLoading(true);
     try {
       const res = await libraryApi.getAll(currentSchool!.id, { size: 50 });
-      setBooks(res.data?.content?.length ? res.data.content : defaultBooks);
+      const items = normalizeListResponse<any>(res.data).items;
+      setBooks(items.length ? items : defaultBooks);
     } catch {
       setBooks(defaultBooks);
     }

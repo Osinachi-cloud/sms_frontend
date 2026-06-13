@@ -183,7 +183,7 @@ export default function TeacherGradebookPage() {
               ))}
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-4 sm:-mx-6">
+            <div className="overflow-x-auto scrollbar-hide -mx-4 sm:-mx-6">
               <table className="w-full min-w-[600px]">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">

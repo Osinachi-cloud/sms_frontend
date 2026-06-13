@@ -261,7 +261,7 @@ export default function UsersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto scrollbar-hide">
           <DataTable
             columns={columns}
             data={users}
@@ -360,7 +360,7 @@ export default function UsersPage() {
         )}
 
         {step === 2 && (
-          <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-5 max-h-[60vh] overflow-y-auto scrollbar-hide pr-1">
             {/* Auto-selected role badge */}
             <div className="flex items-center gap-2 p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800">
               <UserCog className="w-4 h-4 text-primary-500" />

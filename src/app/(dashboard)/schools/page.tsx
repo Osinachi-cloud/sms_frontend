@@ -5,13 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { DataTable } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
 import { schoolApi } from '@/lib/api';
 import { formatDate, getStatusColor } from '@/lib/utils';
 import { School, PageResponse } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Building2, Eye, EyeOff, Check } from 'lucide-react';
+import { Plus, Search, Building2, Eye, EyeOff, Check, Pencil } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,6 +38,32 @@ const schoolSchema = z.object({
 });
 
 type SchoolForm = z.infer<typeof schoolSchema>;
+
+const editSchoolSchema = z.object({
+  name: z.string().min(2, 'School name is required'),
+  subdomain: z.string().optional(),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  adminFullName: z.string().min(2, "Admin's full name is required"),
+  adminEmail: z.string().email('Invalid admin email'),
+  adminPassword: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(32, 'Password must not exceed 32 characters')
+    .regex(PASSWORD_REGEX, 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)')
+    .optional()
+    .or(z.literal('')),
+}).refine((data) => {
+  if (data.adminPassword && data.adminPassword.length > 0) {
+    return data.adminPassword.length >= 8;
+  }
+  return true;
+}, {
+  message: 'Password must be at least 8 characters',
+  path: ['adminPassword'],
+});
+
+type EditSchoolForm = z.infer<typeof editSchoolSchema>;
 
 type Step = 1 | 2;
 
@@ -102,6 +127,8 @@ export default function SchoolsPage() {
   const [schools, setSchools] = useState<School[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
@@ -112,6 +139,11 @@ export default function SchoolsPage() {
 
   const { register, handleSubmit, reset, trigger, formState: { errors, isSubmitting }, watch } = useForm<SchoolForm>({
     resolver: zodResolver(schoolSchema),
+    mode: 'onChange',
+  });
+
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, formState: { errors: editErrors, isSubmitting: isEditSubmitting } } = useForm<EditSchoolForm>({
+    resolver: zodResolver(editSchoolSchema),
     mode: 'onChange',
   });
 
@@ -157,6 +189,47 @@ export default function SchoolsPage() {
       fetchSchools();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create school');
+    }
+  };
+
+  const openEditModal = (school: School) => {
+    setEditingSchool(school);
+    resetEdit({
+      name: school.name,
+      subdomain: school.subdomain || '',
+      email: school.email || '',
+      phone: school.phone || '',
+      address: school.address || '',
+      adminFullName: school.admin?.fullName || '',
+      adminEmail: school.admin?.email || '',
+      adminPassword: '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const onEditSubmit = async (data: EditSchoolForm) => {
+    if (!editingSchool) return;
+    try {
+      const payload: any = {
+        name: data.name,
+        subdomain: data.subdomain || undefined,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        address: data.address || undefined,
+        adminFullName: data.adminFullName,
+        adminEmail: data.adminEmail,
+      };
+      if (data.adminPassword && data.adminPassword.length > 0) {
+        payload.adminPassword = data.adminPassword;
+      }
+      await schoolApi.update(editingSchool.id, payload);
+      toast.success('School updated successfully');
+      setIsEditModalOpen(false);
+      setEditingSchool(null);
+      resetEdit();
+      fetchSchools();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update school');
     }
   };
 
@@ -234,6 +307,14 @@ export default function SchoolsPage() {
       header: '',
       render: (school: School) => (
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openEditModal(school)}
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
           {school.status === 'ACTIVE' ? (
             <Button
               variant="ghost"
@@ -284,7 +365,7 @@ export default function SchoolsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto scrollbar-hide">
           <DataTable
             columns={columns}
             data={schools}
@@ -298,6 +379,7 @@ export default function SchoolsPage() {
         </CardContent>
       </Card>
 
+      {/* Create School Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -339,7 +421,7 @@ export default function SchoolsPage() {
                   {...register('email')}
                   type="email"
                   label="School Email"
-                  placeholder="info@school.edu"
+                  placeholder="[EMAIL_REDACTED]"
                   error={errors.email?.message}
                 />
                 <Input
@@ -384,7 +466,7 @@ export default function SchoolsPage() {
                   {...register('adminEmail')}
                   type="email"
                   label="Admin Email *"
-                  placeholder="admin@school.edu"
+                  placeholder="[EMAIL_REDACTED]"
                   error={errors.adminEmail?.message}
                 />
 
@@ -480,6 +562,91 @@ export default function SchoolsPage() {
               </motion.div>
             )}
           </AnimatePresence>
+        </form>
+      </Modal>
+
+      {/* Edit School Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingSchool(null);
+          resetEdit();
+        }}
+        title="Edit School"
+        size="md"
+      >
+        <form onSubmit={handleSubmitEdit(onEditSubmit)}>
+          <div className="space-y-3">
+            <div className="border-b border-slate-200 dark:border-slate-700 pb-3 mb-3">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">School Details</h3>
+            </div>
+            <Input
+              {...registerEdit('name')}
+              label="School Name *"
+              placeholder="e.g. Greenfield Academy"
+              error={editErrors.name?.message}
+            />
+            <Input
+              {...registerEdit('subdomain')}
+              label="Subdomain"
+              placeholder="e.g. greenfield (optional)"
+              error={editErrors.subdomain?.message}
+            />
+            <Input
+              {...registerEdit('email')}
+              type="email"
+              label="School Email"
+              placeholder="[EMAIL_REDACTED]"
+              error={editErrors.email?.message}
+            />
+            <Input
+              {...registerEdit('phone')}
+              label="Phone"
+              placeholder="+234..."
+              error={editErrors.phone?.message}
+            />
+            <Input
+              {...registerEdit('address')}
+              label="Address"
+              placeholder="School address"
+              error={editErrors.address?.message}
+            />
+
+            <div className="border-b border-slate-200 dark:border-slate-700 pb-3 mb-3 pt-3">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Admin Account</h3>
+              <p className="text-xs text-slate-500">Changes to admin email will be cascaded across all records in the database.</p>
+            </div>
+            <Input
+              {...registerEdit('adminFullName')}
+              label="Admin Full Name *"
+              placeholder="e.g. Mrs Folake Adeleke"
+              error={editErrors.adminFullName?.message}
+            />
+            <Input
+              {...registerEdit('adminEmail')}
+              type="email"
+              label="Admin Email *"
+              placeholder="[EMAIL_REDACTED]"
+              error={editErrors.adminEmail?.message}
+            />
+            <Input
+              {...registerEdit('adminPassword')}
+              type="password"
+              label="New Password (leave blank to keep unchanged)"
+              placeholder="••••••••"
+              error={editErrors.adminPassword?.message}
+            />
+
+            <div className="flex gap-3 pt-3">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" isLoading={isEditSubmitting} className="ml-auto">
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </form>
       </Modal>
     </div>

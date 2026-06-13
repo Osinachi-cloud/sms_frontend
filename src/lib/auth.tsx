@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, AuthResponse, SchoolInfo } from '@/types';
 import { authApi } from './api';
 import { useRouter } from 'next/navigation';
@@ -26,14 +26,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const MOCK_USERS: Record<string, User> = {
   'platform-admin': {
     id: 'u-admin',
-    email: 'admin@schoolsaas.com',
+    email: '[EMAIL_REDACTED]',
     fullName: 'Platform Admin',
     platformRole: 'APP_ADMIN',
     schools: [],
   },
   admin: {
     id: 'u-gf-admin',
-    email: 'admin@greenfield.edu',
+    email: '[EMAIL_REDACTED]',
     fullName: 'Mrs. Folake Adeleke',
     platformRole: '',
     schools: [
@@ -48,17 +48,18 @@ const MOCK_USERS: Record<string, User> = {
           'teacher.read', 'teacher.create', 'teacher.update', 'teacher.delete', 'teacher.assign.class',
           'class.read', 'class.create', 'class.update', 'class.delete',
           'cms.folder.read', 'cms.folder.create', 'cms.content.read', 'cms.content.approve', 'cms.content.publish',
-          'fee.read', 'fee.create', 'fee.update', 'payment.read', 'payment.create', 'payment.gateway.manage',
+          'fee.read', 'fee.create', 'fee.update', 'payment.read', 'payment.create', 'payment.gateway.manage', 'payment.gateway.switch',
           'analytics.academic.view', 'analytics.finance.view', 'school.read', 'school.update',
           'role.read', 'role.create', 'role.delete',
           'user.read', 'user.create',
+          'product.create', 'cms.content.edit.any', 'subject.create', 'subject.update', 'subject.delete',
         ],
       },
     ],
   },
   teacher: {
     id: 'u-gf-teacher',
-    email: 'john.o@greenfield.edu',
+    email: '[EMAIL_REDACTED]',
     fullName: 'Mr. John Okafor',
     platformRole: '',
     schools: [
@@ -78,7 +79,7 @@ const MOCK_USERS: Record<string, User> = {
   },
   student: {
     id: 'u-gf-student',
-    email: 'ade.j@greenfield.edu',
+    email: '[EMAIL_REDACTED]',
     fullName: 'Ade Johnson',
     platformRole: '',
     schools: [
@@ -96,11 +97,44 @@ const MOCK_USERS: Record<string, User> = {
   },
 };
 
+function getTokenExpiration(token: string): number | null {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [currentSchool, setCurrentSchool] = useState<SchoolInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('currentSchool');
+      setUser(null);
+      setCurrentSchool(null);
+      router.push('/login');
+    }
+  }, [router]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -108,13 +142,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = localStorage.getItem('accessToken');
 
     if (storedUser && accessToken) {
-      setUser(JSON.parse(storedUser));
-      if (storedSchool) {
-        setCurrentSchool(JSON.parse(storedSchool));
+      const exp = getTokenExpiration(accessToken);
+      if (exp && Date.now() >= exp) {
+        logout();
+      } else {
+        setUser(JSON.parse(storedUser));
+        if (storedSchool) {
+          setCurrentSchool(JSON.parse(storedSchool));
+        }
       }
     }
     setIsLoading(false);
-  }, []);
+  }, [logout]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      const exp = getTokenExpiration(token);
+      if (exp && Date.now() >= exp) {
+        logout();
+      }
+    }, 30000); // check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [logout]);
 
   const login = async (email: string, password: string, schoolId?: string) => {
     // First login without schoolId to get user info and available schools
@@ -182,22 +234,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(data.user));
 
     setUser(data.user);
-  };
-
-  const logout = async () => {
-    try {
-      await authApi.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('currentSchool');
-      setUser(null);
-      setCurrentSchool(null);
-      router.push('/login');
-    }
   };
 
   const selectSchool = async (school: SchoolInfo) => {

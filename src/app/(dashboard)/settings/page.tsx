@@ -7,11 +7,12 @@ import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
 import { validatePassword } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { User, Bell, Shield, Palette, School, Trash2, RefreshCw, Camera, Type, Mail, Phone, MapPin, CreditCard, GraduationCap, Award } from 'lucide-react';
+import { User, Bell, Shield, Palette, School, Trash2, RefreshCw, Camera, Type, Mail, Phone, MapPin, CreditCard, GraduationCap, Award, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { settingsApi } from '@/lib/api';
 import PaymentGatewaySettings from './PaymentGatewaySettings';
+import AcademicCalendarSettings from './AcademicCalendarSettings';
 
 const PRESET_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -188,6 +189,7 @@ export default function SettingsPage() {
   const tabs = [
     { key: 'profile', label: 'Profile', icon: User },
     { key: 'school', label: 'School & Branding', icon: School },
+    { key: 'academic-calendar', label: 'Academic Calendar', icon: Calendar },
     { key: 'notifications', label: 'Notifications', icon: Bell },
     { key: 'security', label: 'Security', icon: Shield },
     ...(canManageGateway ? [{ key: 'payment', label: 'Payment Gateway', icon: CreditCard }] : []),
@@ -746,6 +748,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Academic Calendar Tab */}
+      {activeTab === 'academic-calendar' && (
+        <AcademicCalendarSettings />
       )}
 
       {/* Payment Gateway Tab */}

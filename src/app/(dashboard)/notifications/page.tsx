@@ -4,6 +4,7 @@ import { notificationApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { normalizeListResponse } from '@/lib/utils';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -12,7 +13,7 @@ export default function NotificationsPage() {
   const load = async () => {
     setLoading(true);
     const res = await notificationApi.getAll({ size: 50 });
-    setNotifications(res.data?.content || []);
+    setNotifications(normalizeListResponse<any>(res.data).items);
     setLoading(false);
   };
 
