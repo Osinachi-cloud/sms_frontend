@@ -481,7 +481,7 @@ export default function SchoolsPage() {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       className={cn(
-                        'w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-500 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 px-4 py-2.5 pr-10 text-sm',
+                        'w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-500 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary-500 focus:ring-2 focus:ring-[rgba(var(--primary-500),0.2)] transition-all duration-200 px-4 py-2.5 pr-10 text-sm',
                         errors.adminPassword && 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                       )}
                     />
@@ -534,7 +534,7 @@ export default function SchoolsPage() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       className={cn(
-                        'w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-500 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 px-4 py-2.5 pr-10 text-sm',
+                        'w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-500 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary-500 focus:ring-2 focus:ring-[rgba(var(--primary-500),0.2)] transition-all duration-200 px-4 py-2.5 pr-10 text-sm',
                         errors.adminConfirmPassword && 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                       )}
                     />

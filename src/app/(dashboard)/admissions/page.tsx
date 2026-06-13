@@ -581,7 +581,7 @@ export default function AdmissionsPage() {
                   value={reviewNotes}
                   onChange={(e) => setReviewNotes(e.target.value)}
                   placeholder="Add review notes (optional)..."
-                  className="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 px-4 py-3 text-sm min-h-[80px] resize-y"
+                  className="w-full rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary-500 focus:ring-2 focus:ring-[rgba(var(--primary-500),0.2)] transition-all duration-200 px-4 py-3 text-sm min-h-[80px] resize-y"
                 />
 
                 <div className="flex gap-2 pt-3">
