@@ -56,6 +56,7 @@ export default function MyStudentsWithParentsPage() {
   }, [schoolId, selectedClass]);
 
   const loadData = async () => {
+    if (!schoolId) return;
     try {
       setLoading(true);
       const params = selectedClass ? { classId: selectedClass } : undefined;
@@ -69,6 +70,7 @@ export default function MyStudentsWithParentsPage() {
   };
 
   const loadClasses = async () => {
+    if (!schoolId) return;
     try {
       const res = await classApi.getAll(schoolId);
       setClasses(res.data?.content || []);

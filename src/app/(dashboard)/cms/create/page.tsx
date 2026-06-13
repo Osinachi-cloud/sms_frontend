@@ -139,13 +139,17 @@ export default function CreateContentPage() {
       const contentId = response.data.id || editId;
 
       if (submit) {
+        if (!contentId) {
+          toast.error('Content ID is missing');
+          return;
+        }
         await rawCmsApi.submitContent(contentId);
         toast.success('Content submitted for approval');
       } else {
         toast.success(editId ? 'Content saved' : 'Draft created');
       }
 
-      if (!editId) {
+      if (!editId && contentId) {
         router.push(`/cms/create?edit=${contentId}`);
       }
     } catch (error: any) {

@@ -59,6 +59,7 @@ export default function SubjectsPage() {
   }, [schoolId]);
 
   const loadSubjects = async () => {
+    if (!schoolId) return;
     try {
       const res = await subjectApi.getAll(schoolId);
       setSubjects(normalizeListResponse<Subject>(res.data).items);
@@ -70,6 +71,7 @@ export default function SubjectsPage() {
   };
 
   const loadClasses = async () => {
+    if (!schoolId) return;
     try {
       const res = await classApi.getAll(schoolId);
       setClasses(res.data?.content || []);
@@ -98,6 +100,10 @@ export default function SubjectsPage() {
   };
 
   const handleSave = async () => {
+    if (!schoolId) {
+      toast.error('School not loaded');
+      return;
+    }
     if (!form.name.trim()) {
       toast.error('Subject name is required');
       return;
@@ -122,6 +128,10 @@ export default function SubjectsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!schoolId) {
+      toast.error('School not loaded');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this subject?')) return;
     try {
       await subjectApi.delete(schoolId, id);

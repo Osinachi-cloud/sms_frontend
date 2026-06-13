@@ -307,7 +307,7 @@ export const attendanceApi = {
     return api.get(`/api/schools/${schoolId}/attendance/template`, {
       responseType: 'blob',
     }).then((res) => {
-      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' });
+      const blob = new Blob([res.data], { type: String(res.headers['content-type'] || 'application/octet-stream') });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -707,7 +707,7 @@ export const holidayApi = {
     return api.get(`/api/schools/${schoolId}/holidays/template`, {
       responseType: 'blob',
     }).then((res) => {
-      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' });
+      const blob = new Blob([res.data], { type: String(res.headers['content-type'] || 'application/octet-stream') });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

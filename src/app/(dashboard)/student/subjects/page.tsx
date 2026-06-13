@@ -42,6 +42,7 @@ export default function StudentSubjectsPage() {
   }, [schoolId, studentId]);
 
   const loadData = async () => {
+    if (!schoolId || !studentId) return;
     try {
       const [subjectsRes, enrollmentsRes] = await Promise.all([
         subjectApi.getForStudent(schoolId, studentId),
@@ -61,6 +62,10 @@ export default function StudentSubjectsPage() {
   };
 
   const handleEnroll = async (subject: Subject) => {
+    if (!schoolId || !studentId) {
+      toast.error('School or student not loaded');
+      return;
+    }
     try {
       if (subject.isFree) {
         await enrollmentApi.enroll(schoolId, studentId, subject.id);
