@@ -75,6 +75,7 @@ export default function HolidaysPage() {
   }, [schoolId]);
 
   const loadHolidays = async () => {
+    if (!schoolId) return;
     try {
       const res = await holidayApi.getAll(schoolId);
       setHolidays(normalizeListResponse<Holiday>(res.data).items);
@@ -103,6 +104,7 @@ export default function HolidaysPage() {
   };
 
   const handleSave = async () => {
+    if (!schoolId) return;
     if (!form.name.trim() || !form.date) {
       toast.error('Name and date are required');
       return;
@@ -123,6 +125,7 @@ export default function HolidaysPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!schoolId) return;
     if (!confirm('Are you sure you want to delete this holiday?')) return;
     try {
       await holidayApi.delete(schoolId, id);
@@ -150,6 +153,10 @@ export default function HolidaysPage() {
   }, []);
 
   const handleFileSelect = async (file: File) => {
+    if (!schoolId) {
+      toast.error('School not loaded');
+      return;
+    }
     const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
     if (!validTypes.includes(file.type) &&
         !file.name.endsWith('.csv') &&
@@ -180,6 +187,7 @@ export default function HolidaysPage() {
   };
 
   const confirmBulkUpload = async () => {
+    if (!schoolId) return;
     const validItems = previewItems.filter((item) => item.valid);
     if (validItems.length === 0) {
       toast.error('No valid holidays to upload');
