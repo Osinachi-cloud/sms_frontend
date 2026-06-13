@@ -42,7 +42,8 @@ export default function CourseContentViewPage() {
 
   const loadContent = async () => {
     try {
-      const res = await courseContentApi.getOne(schoolId, contentId, studentId);
+      if (!schoolId || !contentId) return;
+      const res = await courseContentApi.getOne(schoolId, contentId, studentId || '');
       setContent(res.data);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to load content');
