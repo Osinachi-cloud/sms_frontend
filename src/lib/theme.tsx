@@ -40,23 +40,12 @@ function applyThemeColors(colors: ThemeColors) {
   const secondaryRgb = hexToRgb(colors.secondaryColor);
   const accentRgb = hexToRgb(colors.accentColor);
 
-  setCssVariable('--color-primary', colors.primaryColor);
-  setCssVariable('--color-primary-rgb', primaryRgb);
-  setCssVariable('--color-secondary', colors.secondaryColor);
-  setCssVariable('--color-secondary-rgb', secondaryRgb);
-  setCssVariable('--color-accent', colors.accentColor);
-  setCssVariable('--color-accent-rgb', accentRgb);
+  setCssVariable('--color-primary', primaryRgb);
+  setCssVariable('--color-secondary', secondaryRgb);
+  setCssVariable('--color-accent', accentRgb);
 
-  // Tailwind primary shade mapping (approximate)
-  // We compute darker/lighter variants by manipulating HSL
-  const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-  shades.forEach((shade) => {
-    const cssVar = `--color-primary-${shade}`;
-    // Use the primary color as base; for a real implementation we'd compute
-    // exact HSL variants. Here we set the variable so that any custom CSS
-    // can reference it.
-    setCssVariable(cssVar, colors.primaryColor);
-  });
+  // We intentionally do NOT override the shade variables (--color-primary-50..950)
+  // so that the static Tailwind-compatible RGB definitions in globals.css remain in effect.
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
