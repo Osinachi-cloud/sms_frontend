@@ -46,7 +46,7 @@ body {
   }
 
   .glass-input {
-    @apply w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-500 text-slate-900 dark:text-white outline-none focus:border-primary-500 focus:ring-2 focus:ring-[rgba(var(--primary-500),0.2)] transition-all duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500;
+    @apply w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-500 text-slate-900 dark:text-white outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500;
   }
 
   select.glass-input {

@@ -34,7 +34,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               'text-slate-900 dark:text-white',
               'placeholder:text-slate-400 dark:placeholder:text-slate-500',
               'outline-none',
-              'focus:border-primary-500 focus:ring-2 focus:ring-[rgba(var(--primary-500),0.2)]',
+              'focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20',
               'transition-all duration-200',
               icon ? 'pl-10 pr-4 py-3' : 'px-4 py-3',
               error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
