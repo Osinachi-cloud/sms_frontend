@@ -4,6 +4,8 @@ export interface User {
   fullName: string;
   avatarUrl?: string;
   platformRole?: string;
+  studentId?: string;
+  children?: { id: string; fullName: string; className?: string }[];
   schools: SchoolInfo[];
 }
 

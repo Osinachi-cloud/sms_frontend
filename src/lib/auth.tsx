@@ -11,7 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string, schoolId?: string) => Promise<void>;
-  mockLogin: (role: 'platform-admin' | 'admin' | 'teacher' | 'student') => void;
+  mockLogin: (role: 'platform-admin' | 'admin' | 'teacher' | 'student' | 'parent') => void;
   register: (fullName: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   selectSchool: (school: SchoolInfo) => Promise<void>;
@@ -19,6 +19,8 @@ interface AuthContextType {
   isPlatformAdmin: () => boolean;
   isAppAdmin: () => boolean;
   isGeneralAdmin: () => boolean;
+  isStudent: () => boolean;
+  isParent: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,9 +81,10 @@ const MOCK_USERS: Record<string, User> = {
   },
   student: {
     id: 'u-gf-student',
-    email: '[EMAIL_REDACTED]',
+    email: 'ade.johnson@student.com',
     fullName: 'Ade Johnson',
     platformRole: '',
+    studentId: 'stu-ade-001',
     schools: [
       {
         id: 'sch1',
@@ -92,6 +95,25 @@ const MOCK_USERS: Record<string, User> = {
           'student.grades.read', 'student.attendance.read',
           'cms.content.read', 'fee.read', 'payment.read',
         ],
+      },
+    ],
+  },
+  parent: {
+    id: 'u-parent-01',
+    email: 'mrs.johnson@email.com',
+    fullName: 'Mrs Johnson',
+    platformRole: '',
+    children: [
+      { id: 'stu-ade-001', fullName: 'Ade Johnson', className: 'JSS 1A' },
+      { id: 'stu-joy-002', fullName: 'Joy Johnson', className: 'JSS 2B' },
+    ],
+    schools: [
+      {
+        id: 'sch1',
+        name: 'Greenfield Academy',
+        code: 'GFA001',
+        roleName: 'PARENT',
+        permissions: ['fee.read', 'payment.read', 'student.grades.read', 'student.attendance.read'],
       },
     ],
   },
@@ -205,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const mockLogin = (role: 'platform-admin' | 'admin' | 'teacher' | 'student') => {
+  const mockLogin = (role: 'platform-admin' | 'admin' | 'teacher' | 'student' | 'parent') => {
     const mockUser = MOCK_USERS[role];
     const token = `mock-jwt-token-${role}`;
 
@@ -278,6 +300,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.platformRole === 'GENERAL_ADMIN';
   };
 
+  const isStudent = (): boolean => {
+    return currentSchool?.roleName === 'STUDENT' || !!user?.studentId;
+  };
+
+  const isParent = (): boolean => {
+    return currentSchool?.roleName === 'PARENT' || (!!user?.children && user.children.length > 0);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -294,6 +324,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isPlatformAdmin,
         isAppAdmin,
         isGeneralAdmin,
+        isStudent,
+        isParent,
       }}
     >
       {children}

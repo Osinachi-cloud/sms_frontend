@@ -11,7 +11,7 @@ import { User, Bell, Shield, Palette, School, Trash2, RefreshCw, Camera, Type, M
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { settingsApi } from '@/lib/api';
-import PaymentGatewaySettings from './PaymentGatewaySettings';
+import PaymentSettings from './PaymentSettings';
 import AcademicCalendarSettings from './AcademicCalendarSettings';
 
 const PRESET_COLORS = [
@@ -24,7 +24,9 @@ export default function SettingsPage() {
   const { applyColors } = useTheme();
   const [activeTab, setActiveTab] = useState<string>('school');
 
-  const canManageGateway = isAppAdmin() || currentSchool?.roleName === 'ACCOUNTANT' || hasPermission('payment.gateway.manage');
+  const roleName = currentSchool?.roleName?.toLowerCase() || '';
+  const isSchoolAdmin = roleName.includes('admin');
+  const canManageGateway = isAppAdmin() || isSchoolAdmin || currentSchool?.roleName === 'ACCOUNTANT' || hasPermission('payment.gateway.manage') || hasPermission('payment.gateway.switch');
   const [isSaving, setIsSaving] = useState(false);
 
   // Profile state
@@ -192,7 +194,7 @@ export default function SettingsPage() {
     { key: 'academic-calendar', label: 'Academic Calendar', icon: Calendar },
     { key: 'notifications', label: 'Notifications', icon: Bell },
     { key: 'security', label: 'Security', icon: Shield },
-    ...(canManageGateway ? [{ key: 'payment', label: 'Payment Gateway', icon: CreditCard }] : []),
+    ...(canManageGateway ? [{ key: 'payment', label: 'Payment', icon: CreditCard }] : []),
   ] as { key: string; label: string; icon: any }[];
 
   return (
@@ -755,9 +757,9 @@ export default function SettingsPage() {
         <AcademicCalendarSettings />
       )}
 
-      {/* Payment Gateway Tab */}
+      {/* Payment Tab */}
       {activeTab === 'payment' && canManageGateway && (
-        <PaymentGatewaySettings schoolId={currentSchool?.id || ''} />
+        <PaymentSettings schoolId={currentSchool?.id || ''} />
       )}
     </div>
   );

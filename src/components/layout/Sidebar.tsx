@@ -88,6 +88,14 @@ const studentNavItems: NavItem[] = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
+const parentNavItems: NavItem[] = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'My Children', href: '/student/fees', icon: Users },
+  { name: 'Messages', href: '/messages', icon: MessageSquare },
+  { name: 'Notifications', href: '/notifications', icon: Bell },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
+
 const teacherNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Classes', href: '/teacher/my-classes', icon: School },
@@ -137,6 +145,7 @@ export function Sidebar() {
 
   const getNavItems = () => {
     if (isPlatformAdmin()) return platformAdminNavItems;
+    if (roleName.includes('parent')) return parentNavItems;
     if (roleName.includes('student')) return studentNavItems;
     if (roleName.includes('teacher')) return teacherNavItems;
     // Default to school admin nav for anyone else with a school role (ADMIN, etc.)
