@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, Building2, Eye, EyeOff, Check, Pencil } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
@@ -124,6 +125,7 @@ function cn(...classes: (string | false | undefined)[]) {
 
 export default function SchoolsPage() {
   const { isPlatformAdmin } = useAuth();
+  const router = useRouter();
   const [schools, setSchools] = useState<School[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -266,7 +268,7 @@ export default function SchoolsPage() {
             <Building2 className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="font-medium">{school.name}</p>
+            <p className="font-medium group-hover:text-primary-600 transition-colors">{school.name}</p>
             <p className="text-xs text-slate-500">{school.code}</p>
           </div>
         </div>
@@ -375,6 +377,7 @@ export default function SchoolsPage() {
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            onRowClick={(school) => router.push(`/schools/${school.id}`)}
           />
         </CardContent>
       </Card>

@@ -21,6 +21,7 @@ interface DataTableProps<T> {
   page?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  onRowClick?: (item: T) => void;
   mobileCardRender?: (item: T) => React.ReactNode;
 }
 
@@ -33,6 +34,7 @@ export function DataTable<T extends Record<string, any>>({
   page = 0,
   totalPages = 1,
   onPageChange,
+  onRowClick,
   mobileCardRender,
 }: DataTableProps<T>) {
   if (isLoading) {
@@ -75,7 +77,11 @@ export function DataTable<T extends Record<string, any>>({
             {data.map((item) => (
               <tr
                 key={String(item[keyField])}
-                className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                onClick={() => onRowClick?.(item)}
+                className={cn(
+                  'border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group',
+                  onRowClick && 'cursor-pointer'
+                )}
               >
                 {columns.map((column) => (
                   <td
@@ -99,7 +105,11 @@ export function DataTable<T extends Record<string, any>>({
         {data.map((item) => (
           <div
             key={String(item[keyField])}
-            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm"
+            onClick={() => onRowClick?.(item)}
+            className={cn(
+              'bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm',
+              onRowClick && 'cursor-pointer hover:border-primary-300 dark:hover:border-primary-700 transition-colors'
+            )}
           >
             {mobileCardRender ? (
               mobileCardRender(item)
