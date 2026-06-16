@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'School SaaS - Multi-Tenant School Management',
+  title: 'Ali & Simbi — Multi-Tenant School Management',
   description: 'Production-grade multi-tenant School Management SaaS platform',
 };
 

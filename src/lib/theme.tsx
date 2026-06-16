@@ -12,6 +12,9 @@ interface ThemeContextType {
   colors: ThemeColors;
   applyColors: (colors: Partial<ThemeColors>) => void;
   resetColors: () => void;
+  isDark: boolean;
+  setDark: (value: boolean) => void;
+  toggleDark: () => void;
 }
 
 const defaultColors: ThemeColors = {
@@ -52,9 +55,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [colors, setColors] = useState<ThemeColors>(defaultColors);
+  const [isDark, setIsDark] = useState<boolean>(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Load saved colors from localStorage
+    setMounted(true);
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('schoolTheme');
@@ -68,8 +73,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       } catch {
         applyThemeColors(defaultColors);
       }
+
+      const savedMode = localStorage.getItem('aliSimbiDarkMode');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialDark = savedMode !== null ? savedMode === 'true' : prefersDark;
+      setIsDark(initialDark);
+      if (initialDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aliSimbiDarkMode', String(isDark));
+    }
+  }, [isDark, mounted]);
 
   const applyColors = (newColors: Partial<ThemeColors>) => {
     const updated = { ...colors, ...newColors };
@@ -88,8 +115,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setDark = (value: boolean) => setIsDark(value);
+  const toggleDark = () => setIsDark((prev) => !prev);
+
   return (
-    <ThemeContext.Provider value={{ colors, applyColors, resetColors }}>
+    <ThemeContext.Provider value={{ colors, applyColors, resetColors, isDark, setDark, toggleDark }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -31,6 +31,7 @@ import {
   X,
   Menu,
 } from 'lucide-react';
+import AliSimbiLogo from '@/components/landing/AliSimbiLogo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -212,15 +213,14 @@ export function Sidebar() {
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                  <School className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                <div className="flex-shrink-0">
+                  <AliSimbiLogo size="sm" />
                 </div>
-                <div className="overflow-hidden">
-                  <h1 className="font-bold text-sm sm:text-lg gradient-text">SchoolSaaS</h1>
-                  {currentSchool && (
+                {currentSchool && (
+                  <div className="overflow-hidden">
                     <p className="text-[10px] sm:text-xs text-slate-500 truncate max-w-[180px]">{currentSchool.name}</p>
-                  )}
-                </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

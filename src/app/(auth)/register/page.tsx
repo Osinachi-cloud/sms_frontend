@@ -81,7 +81,7 @@ export default function RegisterPage() {
             <School className="w-8 h-8 text-white" />
           </motion.div>
           <h1 className="text-2xl font-bold gradient-text">Create Account</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Join SchoolSaaS today</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Join Ali &amp; Simbi today</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

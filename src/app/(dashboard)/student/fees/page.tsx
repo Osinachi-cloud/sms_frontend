@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
-import { paymentApi, settingsApi, studentApi } from '@/lib/api';
+import { paymentApi, settingsApi, studentApi, dashboardApi } from '@/lib/api';
 import { useInlinePayment } from '@/lib/payment-inline';
 import { Payment } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -82,21 +82,36 @@ export default function StudentFeesPage() {
     },
   });
 
-  // Determine target student(s)
+  // Build target students from auth context first, enriched by API data when available.
+  // This ensures the page works even when studentApi.getAll fails (e.g. students lack student.read permission).
   const targetStudents = useMemo<StudentInfo[]>(() => {
     if (isStudent() && user?.studentId) {
       const stu = students.find((s) => s.id === user.studentId);
-      return stu ? [stu] : [];
+      if (stu) return [stu];
+      // Fallback: minimal info from auth context
+      return [{ id: user.studentId, fullName: user.fullName, admissionNumber: '' }];
     }
     if (isParent() && user?.children) {
-      return students.filter((s) => user.children?.some((c) => c.id === s.id));
+      return user.children.map((c) => {
+        const stu = students.find((s) => s.id === c.id);
+        return stu || { id: c.id, fullName: c.fullName, admissionNumber: '', className: c.className };
+      });
     }
     return [];
   }, [isStudent, isParent, user, students]);
 
-  const activeStudent = useMemo(() => {
-    return students.find((s) => s.id === selectedStudentId);
-  }, [students, selectedStudentId]);
+  const activeStudent = useMemo<StudentInfo | undefined>(() => {
+    const stu = students.find((s) => s.id === selectedStudentId);
+    if (stu) return stu;
+    if (isStudent() && user?.studentId === selectedStudentId) {
+      return { id: user.studentId, fullName: user.fullName, admissionNumber: '' };
+    }
+    if (isParent() && user?.children) {
+      const child = user.children.find((c) => c.id === selectedStudentId);
+      if (child) return { id: child.id, fullName: child.fullName, admissionNumber: '', className: child.className };
+    }
+    return undefined;
+  }, [students, selectedStudentId, isStudent, isParent, user]);
 
   const fetchConfig = useCallback(async () => {
     if (!currentSchool) return;
@@ -124,10 +139,53 @@ export default function StudentFeesPage() {
   const fetchStudents = useCallback(async () => {
     if (!currentSchool) return;
     try {
-      // For demo: fetch all students (in production, backend should provide /students/me or /parents/me/children)
+      // Best-effort: fetch all students. May fail for students/parents without student.read permission.
       const res = await studentApi.getAll(currentSchool.id, { size: 1000 });
       const all = ((res as any).data?.content || []) as StudentInfo[];
       setStudents(all);
+    } catch {
+      // silent — we fall back to auth context data
+    }
+  }, [currentSchool]);
+
+  // For student users, also try the dedicated dashboard endpoint to get class info
+  // when the bulk student list is unavailable.
+  const fetchStudentSelfDetails = useCallback(async () => {
+    if (!currentSchool || !isStudent()) return;
+    try {
+      const res = await dashboardApi.getStudentDashboard(currentSchool.id);
+      const data = (res as any).data;
+      if (data?.student) {
+        const stu = data.student;
+        setStudents((prev) => {
+          if (prev.some((s) => s.id === stu.id)) return prev;
+          return [...prev, {
+            id: stu.id,
+            fullName: stu.fullName,
+            admissionNumber: stu.admissionNumber,
+            email: stu.email,
+            classId: data.currentClass?.id,
+            className: data.currentClass?.name,
+          }];
+        });
+      }
+    } catch {
+      // silent
+    }
+  }, [currentSchool, isStudent]);
+
+  // Fetch individual student details when selectedStudentId is known but not yet in students list
+  const fetchStudentDetails = useCallback(async (studentId: string) => {
+    if (!currentSchool) return;
+    try {
+      const res = await studentApi.getOne(currentSchool.id, studentId);
+      const stu = (res as any).data as StudentInfo;
+      if (stu) {
+        setStudents((prev) => {
+          if (prev.some((s) => s.id === stu.id)) return prev;
+          return [...prev, stu];
+        });
+      }
     } catch {
       // silent
     }
@@ -137,22 +195,30 @@ export default function StudentFeesPage() {
     if (currentSchool) {
       fetchConfig();
       fetchStudents();
+      fetchStudentSelfDetails();
     }
-  }, [currentSchool, fetchConfig, fetchStudents]);
+  }, [currentSchool, fetchConfig, fetchStudents, fetchStudentSelfDetails]);
 
+  // Initialize selectedStudentId directly from auth context so payments fetch immediately
+  // without depending on the potentially-failing studentApi.getAll
   useEffect(() => {
-    if (targetStudents.length === 1) {
-      setSelectedStudentId(targetStudents[0].id);
-    } else if (targetStudents.length > 0 && !selectedStudentId) {
-      setSelectedStudentId(targetStudents[0].id);
+    if (selectedStudentId) return;
+    if (isStudent() && user?.studentId) {
+      setSelectedStudentId(user.studentId);
+    } else if (isParent() && user?.children && user.children.length > 0) {
+      setSelectedStudentId(user.children[0].id);
     }
-  }, [targetStudents, selectedStudentId]);
+  }, [isStudent, isParent, user, selectedStudentId]);
 
   useEffect(() => {
     if (selectedStudentId) {
       fetchPayments();
+      // If we don't have this student's details yet, try to fetch them individually
+      if (!students.some((s) => s.id === selectedStudentId)) {
+        fetchStudentDetails(selectedStudentId);
+      }
     }
-  }, [selectedStudentId, fetchPayments]);
+  }, [selectedStudentId, fetchPayments, students, fetchStudentDetails]);
 
   useEffect(() => {
     setIsLoading(false);
@@ -169,9 +235,13 @@ export default function StudentFeesPage() {
     });
   };
 
+  const getPaymentFeeId = (p: Payment) => {
+    return p.metadata?.studentFeeId || (p as any).studentFeeId;
+  };
+
   const isFeePaid = (feeId: string) => {
     return payments.some(
-      (p) => p.status === 'SUCCESS' && p.metadata?.studentFeeId === feeId
+      (p) => p.status === 'SUCCESS' && getPaymentFeeId(p) === feeId
     );
   };
 
@@ -187,7 +257,7 @@ export default function StudentFeesPage() {
 
   const getFeePayment = (feeId: string) => {
     return payments.find(
-      (p) => p.status === 'SUCCESS' && p.metadata?.studentFeeId === feeId
+      (p) => p.status === 'SUCCESS' && getPaymentFeeId(p) === feeId
     );
   };
 
