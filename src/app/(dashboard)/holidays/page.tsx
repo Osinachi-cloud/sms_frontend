@@ -48,7 +48,8 @@ export default function HolidaysPage() {
 
   const schoolId = currentSchool?.id;
   const roleName = currentSchool?.roleName?.toLowerCase() || '';
-  const canEdit = isPlatformAdmin() || roleName.includes('admin') || hasPermission('school.update');
+  // Academic calendar is strictly admin-only (no temporary permissions)
+  const canEdit = isPlatformAdmin() || roleName.includes('admin');
 
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);

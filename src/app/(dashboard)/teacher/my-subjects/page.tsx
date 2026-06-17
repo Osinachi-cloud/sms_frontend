@@ -40,7 +40,9 @@ interface Teacher {
 }
 
 export default function TeacherSubjectsPage() {
-  const { currentSchool } = useAuth();
+  const { currentSchool, isPlatformAdmin, isAppAdmin, hasPermission } = useAuth();
+  const roleName = currentSchool?.roleName?.toLowerCase() || '';
+  const canCreateSubject = isPlatformAdmin() || isAppAdmin() || roleName.includes('admin') || hasPermission('subject.create');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [myClasses, setMyClasses] = useState<Classroom[]>([]);

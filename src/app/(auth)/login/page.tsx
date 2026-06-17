@@ -41,7 +41,22 @@ export default function LoginPage() {
       toast.success('Welcome back!');
       router.push('/dashboard');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed. Try a demo login below if backend is offline.');
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+      const isNetworkError = !error.response;
+
+      if (isTimeout) {
+        toast.error(
+          'Server is waking up (takes ~30s on free hosting). Please try again in a moment.',
+          { duration: 6000 }
+        );
+      } else if (isNetworkError) {
+        toast.error(
+          'Cannot reach the backend server. Please check your internet connection or try a demo login below.',
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(error.response?.data?.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setIsLoading(false);
     }

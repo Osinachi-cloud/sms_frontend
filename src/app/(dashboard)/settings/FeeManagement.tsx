@@ -22,6 +22,7 @@ interface FeeItem {
   discountDeadline?: string;
   paymentDeadline?: string;
   isActive: boolean;
+  isMandatory?: boolean;
   sessionId?: string;
   sessionName?: string;
   termId?: string;
@@ -65,6 +66,7 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
     discountDeadline: '',
     paymentDeadline: '',
     isActive: true,
+    isMandatory: true,
     sessionId: '',
     termId: '',
   });
@@ -117,6 +119,7 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
     setForm({
       id: '', name: '', amount: 0, description: '', applicableClassIds: [], applicableToAll: true,
       discountType: 'none', discountValue: 0, discountDeadline: '', paymentDeadline: '', isActive: true,
+      isMandatory: true,
       sessionId: currentSessionId,
       termId: currentTermId,
       sessionName: sessions.find((s) => s.id === currentSessionId)?.name,
@@ -129,6 +132,10 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
   const handleSave = async () => {
     if (!form.name.trim() || form.amount <= 0) {
       toast.error('Fee name and a positive amount are required');
+      return;
+    }
+    if (!form.termId) {
+      toast.error('Please select the academic term this fee is for');
       return;
     }
     if (form.discountType !== 'none' && (form.discountValue <= 0 || !form.discountDeadline)) {
@@ -437,6 +444,19 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
                   </div>
                 </div>
 
+                {/* Mandatory / Optional */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fee Type</label>
+                  <select
+                    value={form.isMandatory === false ? 'optional' : 'mandatory'}
+                    onChange={(e) => setForm({ ...form, isMandatory: e.target.value === 'mandatory' })}
+                    className="glass-input"
+                  >
+                    <option value="mandatory">Mandatory — must be paid (penalty may apply)</option>
+                    <option value="optional">Optional — can be skipped</option>
+                  </select>
+                </div>
+
                 {/* Active toggle */}
                 <div className="flex items-center gap-3">
                   <button
@@ -499,6 +519,16 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
                             {!fee.isActive && (
                               <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 text-[10px] font-bold uppercase">
                                 Inactive
+                              </span>
+                            )}
+                            {fee.isMandatory !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold uppercase">
+                                Mandatory
+                              </span>
+                            )}
+                            {fee.isMandatory === false && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase">
+                                Optional
                               </span>
                             )}
                           </div>

@@ -39,6 +39,7 @@ interface FeeItem {
   discountDeadline?: string;
   paymentDeadline?: string;
   isActive: boolean;
+  isMandatory?: boolean;
   sessionId?: string;
   sessionName?: string;
   termId?: string;
@@ -115,7 +116,7 @@ export default function StudentFeesPage() {
     }
     if (isParent() && user?.children) {
       const child = user.children.find((c) => c.id === selectedStudentId);
-      if (child) return { id: child.id, fullName: child.fullName, admissionNumber: '', className: child.className };
+      if (child) return { id: child.id, fullName: child.fullName, admissionNumber: '', className: child.className, classId: child.classId };
     }
     return undefined;
   }, [students, selectedStudentId, isStudent, isParent, user]);
@@ -212,10 +213,26 @@ export default function StudentFeesPage() {
       }
     }
 
+    // Strategy 4: for parent users, try the parent-view endpoint
+    // (works when parent role lacks payment.read but has student.grades.read)
+    if (isParent()) {
+      try {
+        const parentRes = await paymentApi.getParentViewOfStudentPayments(currentSchool.id, sid, { size: 200 });
+        const parentFetched = ((parentRes as any).data?.content || []) as Payment[];
+        if (parentFetched.length > 0) {
+          console.log('Fees page: loaded payments via parent-view endpoint');
+          setPayments(parentFetched);
+          return;
+        }
+      } catch (err: any) {
+        console.error('Fees page: parent-view API failed for', sid, err?.response?.status, err?.message);
+      }
+    }
+
     // Nothing worked — keep empty but show user feedback
     setPayments([]);
     console.error(`Fees page: all payment fetch strategies failed for student ${sid}.`);
-  }, [currentSchool, selectedStudentId, isStudent]);
+  }, [currentSchool, selectedStudentId, isStudent, isParent]);
 
   const fetchStudents = useCallback(async () => {
     if (!currentSchool) return;
@@ -238,6 +255,9 @@ export default function StudentFeesPage() {
       const data = (res as any).data;
       if (data?.student) {
         const stu = data.student;
+        // Ensure selectedStudentId uses the canonical student id from the backend
+        // when auth context does not provide one (e.g. no studentId in JWT userinfo).
+        setSelectedStudentId((prev) => prev || stu.id);
         setStudents((prev) => {
           if (prev.some((s) => s.id === stu.id)) return prev;
           return [...prev, {
@@ -315,9 +335,10 @@ export default function StudentFeesPage() {
     return feeItems.filter((fee) => {
       if (!fee.isActive) return false;
 
-      // Term filter: if the fee has a termId, show only if it matches selected term.
-      // If term info is missing (backward compat), always show it.
-      if (fee.termId && selectedTermId) {
+      // Term filter: strict. When a term is selected, only show fees explicitly
+      // assigned to that term. Fees without a termId are hidden when a term is
+      // selected to avoid ambiguity.
+      if (selectedTermId) {
         if (fee.termId !== selectedTermId) return false;
       }
 
@@ -389,10 +410,23 @@ export default function StudentFeesPage() {
   };
 
   const relevantFees = getRelevantFees(selectedStudentId);
-  const totalPaid = payments.filter((p) => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
-  const totalPending = relevantFees
-    .filter((f) => !isFeePaid(f.id))
-    .reduce((sum, f) => sum + computeDiscountedAmount(f), 0);
+  const totalFeesAmount = relevantFees.reduce((s, f) => s + computeDiscountedAmount(f), 0);
+
+  // Separate payments explicitly linked to a current fee item from general/unlinked ones.
+  const feeIds = useMemo(() => new Set(relevantFees.map((f) => f.id)), [relevantFees]);
+  const linkedPayments = payments.filter(
+    (p) => p.status === 'SUCCESS' && feeIds.has(getPaymentFeeId(p) || '')
+  );
+  const unlinkedPayments = payments.filter(
+    (p) => p.status === 'SUCCESS' && !feeIds.has(getPaymentFeeId(p) || '')
+  );
+
+  const linkedPaid = linkedPayments.reduce((sum, p) => sum + p.amount, 0);
+  const unlinkedPaid = unlinkedPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  const totalPaid = linkedPaid + unlinkedPaid;
+  const totalPending = Math.max(0, totalFeesAmount - linkedPaid);
+  const overpaid = totalPaid > totalFeesAmount ? totalPaid - totalFeesAmount : 0;
 
   if (!currentSchool) {
     return (
@@ -434,7 +468,7 @@ export default function StudentFeesPage() {
                 <div>
                   <p className="text-blue-100 text-sm">Total Fees</p>
                   <p className="text-2xl font-bold">
-                    ₦{relevantFees.reduce((s, f) => s + computeDiscountedAmount(f), 0).toLocaleString()}
+                    ₦{totalFeesAmount.toLocaleString()}
                   </p>
                 </div>
                 <Wallet className="w-10 h-10 text-blue-200" />
@@ -449,6 +483,11 @@ export default function StudentFeesPage() {
                 <div>
                   <p className="text-green-100 text-sm">Paid</p>
                   <p className="text-2xl font-bold">₦{totalPaid.toLocaleString()}</p>
+                  {unlinkedPaid > 0 && (
+                    <p className="text-green-200 text-xs mt-1">
+                      Includes ₦{unlinkedPaid.toLocaleString()} unlinked
+                    </p>
+                  )}
                 </div>
                 <CheckCircle className="w-10 h-10 text-green-200" />
               </div>
@@ -462,6 +501,11 @@ export default function StudentFeesPage() {
                 <div>
                   <p className="text-yellow-100 text-sm">Pending</p>
                   <p className="text-2xl font-bold">₦{totalPending.toLocaleString()}</p>
+                  {overpaid > 0 && (
+                    <p className="text-yellow-200 text-xs mt-1">
+                      Overpaid by ₦{overpaid.toLocaleString()}
+                    </p>
+                  )}
                 </div>
                 <Clock className="w-10 h-10 text-yellow-200" />
               </div>
@@ -469,6 +513,18 @@ export default function StudentFeesPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Math consistency notice */}
+      {unlinkedPaid > 0 && totalPending > 0 && (
+        <div className="p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300 text-sm flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <p>
+            You have payments recorded (₦{unlinkedPaid.toLocaleString()}) that are not linked to a specific fee item.
+            Because of this, some fees may still appear unpaid even though money has been received.
+            Please contact your school admin to link these payments to the correct fees.
+          </p>
+        </div>
+      )}
 
       {/* Parent: Child Selector */}
       {(isParent() || targetStudents.length > 1) && (
@@ -545,7 +601,16 @@ export default function StudentFeesPage() {
           {relevantFees.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <Tag className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <p>No fee products available for this class.</p>
+              <p>
+                {selectedTermId
+                  ? `No fee products found for the selected term (${terms.find((t) => t.id === selectedTermId)?.name || ''}).`
+                  : 'No fee products available for this class.'}
+              </p>
+              {selectedTermId && (
+                <p className="text-xs mt-1 text-slate-300">
+                  Try selecting a different term or contact your school admin.
+                </p>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -584,8 +649,14 @@ export default function StudentFeesPage() {
                             )}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-medium text-sm">{fee.name}</p>
+                              {fee.isMandatory !== false && (
+                                <Badge variant="error" className="text-[10px]">Mandatory</Badge>
+                              )}
+                              {fee.isMandatory === false && (
+                                <Badge variant="info" className="text-[10px]">Optional</Badge>
+                              )}
                               {paid && (
                                 <Badge variant="success" className="text-[10px]">Paid</Badge>
                               )}

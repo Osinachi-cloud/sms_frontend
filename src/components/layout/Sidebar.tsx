@@ -92,6 +92,7 @@ const studentNavItems: NavItem[] = [
 const parentNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Children', href: '/student/fees', icon: Users },
+  { name: 'Results', href: '/parent/results', icon: Award },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Notifications', href: '/notifications', icon: Bell },
   { name: 'Settings', href: '/settings', icon: Settings },

@@ -20,7 +20,7 @@ export default function QuizzesPage() {
   const [result, setResult] = useState<any>(null);
   const [role, setRole] = useState('student');
 
-  const newQuiz = { title: '', description: '', durationMinutes: 30, totalMarks: 100, passMark: 40, status: 'DRAFT', questions: [] as any[] };
+  const newQuiz = { title: '', description: '', durationMinutes: 30, totalMarks: 100, passMark: 40, status: 'DRAFT', shuffleQuestions: false, showResultsImmediately: true, maxAttempts: 1, questions: [] as any[] };
   const [quizForm, setQuizForm] = useState(newQuiz);
   const [currentQuestion, setCurrentQuestion] = useState({ questionText: '', questionType: 'MCQ', options: ['', ''], correctAnswer: '', marks: 1 });
 

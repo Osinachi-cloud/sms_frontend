@@ -20,13 +20,20 @@ const PRESET_COLORS = [
 ];
 
 export default function SettingsPage() {
-  const { user, currentSchool, isAppAdmin, hasPermission } = useAuth();
+  const { user, currentSchool, isAppAdmin, isPlatformAdmin, hasPermission, hasTemporaryPermission } = useAuth();
   const { applyColors } = useTheme();
-  const [activeTab, setActiveTab] = useState<string>('school');
+  const [activeTab, setActiveTab] = useState<string>('profile');
 
   const roleName = currentSchool?.roleName?.toLowerCase() || '';
   const isSchoolAdmin = roleName.includes('admin');
+  const isAdminOrPlatform = isSchoolAdmin || isPlatformAdmin() || isAppAdmin();
   const canManageGateway = isAppAdmin() || isSchoolAdmin || currentSchool?.roleName === 'ACCOUNTANT' || hasPermission('payment.gateway.manage') || hasPermission('payment.gateway.switch');
+
+  // Branding is editable only by admins or users with a temporary school.update permission
+  const canManageBranding = isAdminOrPlatform || hasTemporaryPermission('school.update');
+  // Grading scale is editable only by admins or users with a temporary student.grades.manage permission
+  const canManageGrading = isAdminOrPlatform || hasTemporaryPermission('student.grades.manage');
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Profile state
@@ -190,7 +197,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { key: 'profile', label: 'Profile', icon: User },
-    { key: 'school', label: 'School & Branding', icon: School },
+    ...(canManageBranding ? [{ key: 'school', label: 'School & Branding', icon: School }] : []),
     { key: 'academic-calendar', label: 'Academic Calendar', icon: Calendar },
     { key: 'notifications', label: 'Notifications', icon: Bell },
     { key: 'security', label: 'Security', icon: Shield },
@@ -566,6 +573,11 @@ export default function SettingsPage() {
                   <Award className="w-5 h-5 text-white" />
                 </div>
                 <CardTitle>Grading Scale</CardTitle>
+                {!canManageGrading && (
+                  <span className="ml-auto text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">
+                    Read-only
+                  </span>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -579,33 +591,38 @@ export default function SettingsPage() {
                       <input
                         type="number"
                         value={item.min}
-                        onChange={(e) => handleGradingChange(index, 'min', e.target.value)}
-                        className="glass-input py-2 text-sm"
+                        onChange={(e) => canManageGrading && handleGradingChange(index, 'min', e.target.value)}
+                        className={`glass-input py-2 text-sm ${!canManageGrading ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                         min={0}
                         max={100}
+                        readOnly={!canManageGrading}
                       />
                       <input
                         type="number"
                         value={item.max}
-                        onChange={(e) => handleGradingChange(index, 'max', e.target.value)}
-                        className="glass-input py-2 text-sm"
+                        onChange={(e) => canManageGrading && handleGradingChange(index, 'max', e.target.value)}
+                        className={`glass-input py-2 text-sm ${!canManageGrading ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                         min={0}
                         max={100}
+                        readOnly={!canManageGrading}
                       />
                       <input
                         type="text"
                         value={item.remarks}
-                        onChange={(e) => handleGradingChange(index, 'remarks', e.target.value)}
-                        className="glass-input py-2 text-sm"
+                        onChange={(e) => canManageGrading && handleGradingChange(index, 'remarks', e.target.value)}
+                        className={`glass-input py-2 text-sm ${!canManageGrading ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                         placeholder="Remarks"
+                        readOnly={!canManageGrading}
                       />
                     </div>
                   </div>
                 ))}
               </div>
-              <Button variant="secondary" className="mt-4" size="sm" onClick={handleSaveBranding} isLoading={isSaving}>
-                Save Grading Scale
-              </Button>
+              {canManageGrading && (
+                <Button variant="secondary" className="mt-4" size="sm" onClick={handleSaveBranding} isLoading={isSaving}>
+                  Save Grading Scale
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>

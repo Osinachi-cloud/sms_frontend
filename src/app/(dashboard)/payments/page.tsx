@@ -13,7 +13,7 @@ import { Payment, Student, PageResponse } from '@/types';
 import { motion } from 'framer-motion';
 import {
   Plus, CreditCard, TrendingUp, CheckCircle, Landmark, Copy, Banknote, Globe,
-  Search, Calendar, FileText, Wallet, Receipt,
+  Search, Calendar, FileText, Wallet, Receipt, AlertTriangle,
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -207,10 +207,22 @@ export default function PaymentsPage() {
 
   const handleStudentChange = (studentId: string) => {
     setSelectedStudentId(studentId);
-    setSelectedFeeId('');
-    setCustomAmount('');
+    // Auto-select the first applicable fee so payments are linked by default.
+    const fees = getRelevantFees(studentId);
+    const firstFeeId = fees.length > 0 ? fees[0].id : '';
+    setSelectedFeeId(firstFeeId);
+    if (firstFeeId) {
+      const fee = feeItems.find((f: any) => f.id === firstFeeId);
+      if (fee) {
+        const amount = computeDiscountedAmount(fee);
+        setCustomAmount(amount);
+        setValue('amount', amount);
+      }
+    } else {
+      setCustomAmount('');
+      setValue('amount', undefined as any);
+    }
     setValue('studentId', studentId);
-    setValue('amount', undefined as any);
   };
 
   const handleFeeChange = (feeId: string) => {
@@ -512,6 +524,12 @@ export default function PaymentsPage() {
                   ))}
                   <option value="custom">Custom Amount</option>
                 </select>
+                {selectedFeeId === 'custom' && relevantFees.length > 0 && (
+                  <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400 flex items-start gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                    Custom payments are not linked to a fee product. They will appear in payment history but will not mark any fee as paid.
+                  </p>
+                )}
               </div>
             )}
 

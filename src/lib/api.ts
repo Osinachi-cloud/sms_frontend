@@ -3,12 +3,17 @@ import { AuthResponse } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
+// Render free tier needs up to 60s to cold-start. Local dev stays snappy.
+const isProduction = typeof window !== 'undefined'
+  ? !window.location.hostname.includes('localhost')
+  : API_BASE_URL !== 'http://localhost:8080';
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: isProduction ? 60000 : 15000,
 });
 
 let isRefreshing = false;
@@ -237,6 +242,9 @@ export const paymentApi = {
 
   getStudentPayments: (schoolId: string, studentId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/payments/student/${studentId}`, { params }),
+
+  getParentViewOfStudentPayments: (schoolId: string, studentId: string, params?: { page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/payments/parent-view/${studentId}`, { params }),
 };
 
 export const paymentGatewayApi = {

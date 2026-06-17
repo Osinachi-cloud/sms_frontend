@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, AuthResponse, SchoolInfo } from '@/types';
-import { authApi } from './api';
+import { authApi, temporaryPermissionApi } from './api';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   selectSchool: (school: SchoolInfo) => Promise<void>;
   hasPermission: (permission: string) => boolean;
+  hasTemporaryPermission: (permission: string) => boolean;
   isPlatformAdmin: () => boolean;
   isAppAdmin: () => boolean;
   isGeneralAdmin: () => boolean;
@@ -98,9 +99,9 @@ const MOCK_USERS: Record<string, User> = {
       },
     ],
   },
-  parent: {
+    parent: {
     id: 'u-parent-01',
-    email: 'mrs.johnson@email.com',
+    email: '[EMAIL_REDACTED]',
     fullName: 'Mrs Johnson',
     platformRole: '',
     children: [
@@ -114,6 +115,26 @@ const MOCK_USERS: Record<string, User> = {
         code: 'GFA001',
         roleName: 'PARENT',
         permissions: ['fee.read', 'payment.read', 'student.grades.read', 'student.attendance.read'],
+      },
+    ],
+  },
+  'temp-admin-teacher': {
+    id: 'u-gf-teacher-temp',
+    email: '[EMAIL_REDACTED]',
+    fullName: 'Mr. John Okafor (Temp Admin)',
+    platformRole: '',
+    schools: [
+      {
+        id: 'sch1',
+        name: 'Greenfield Academy',
+        code: 'GFA001',
+        roleName: 'TEACHER',
+        permissions: [
+          'student.read', 'student.grades.read', 'student.grades.manage',
+          'student.attendance.read', 'student.attendance.manage',
+          'class.read', 'cms.folder.read', 'cms.content.read', 'cms.content.create',
+          'cms.content.edit', 'cms.content.submit', 'subject.read',
+        ],
       },
     ],
   },
@@ -140,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [currentSchool, setCurrentSchool] = useState<SchoolInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [temporaryPermissions, setTemporaryPermissions] = useState<string[]>([]);
   const router = useRouter();
 
   const logout = useCallback(async () => {
@@ -154,9 +176,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('currentSchool');
       setUser(null);
       setCurrentSchool(null);
+      setTemporaryPermissions([]);
       router.push('/login');
     }
   }, [router]);
+
+  // Fetch temporary permissions whenever user or school changes
+  useEffect(() => {
+    if (!user?.id || !currentSchool?.id) {
+      setTemporaryPermissions([]);
+      return;
+    }
+    temporaryPermissionApi.getUserPermissions(currentSchool.id, user.id)
+      .then((res: any) => {
+        const perms = (res.data || []).map((p: any) => p.permissionKey || p.permission);
+        setTemporaryPermissions(perms);
+      })
+      .catch(() => {
+        // silent — user may lack permission to view their own temp permissions
+        setTemporaryPermissions([]);
+      });
+  }, [user?.id, currentSchool?.id]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -285,7 +325,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return false;
     if (isPlatformAdmin()) return true;
     if (!currentSchool) return false;
-    return currentSchool.permissions.includes(permission);
+    if (currentSchool.permissions.includes(permission)) return true;
+    return temporaryPermissions.includes(permission);
+  };
+
+  const hasTemporaryPermission = (permission: string): boolean => {
+    return temporaryPermissions.includes(permission);
   };
 
   const isPlatformAdmin = (): boolean => {
@@ -321,6 +366,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         selectSchool,
         hasPermission,
+        hasTemporaryPermission,
         isPlatformAdmin,
         isAppAdmin,
         isGeneralAdmin,

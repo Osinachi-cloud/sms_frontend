@@ -2,6 +2,7 @@
 
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { NavigationLoader } from '@/components/layout/NavigationLoader';
 import { AiTutorWidget } from '@/components/ai/AiTutorWidget';
 import { useAuth } from '@/lib/auth';
 import { useRouter, usePathname } from 'next/navigation';
@@ -79,6 +80,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <NavigationLoader />
       <Sidebar />
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         <Header />

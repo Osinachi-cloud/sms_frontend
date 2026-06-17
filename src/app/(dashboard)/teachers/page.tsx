@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
-import { teacherApi } from '@/lib/api';
+import { teacherApi, subjectApi, classApi } from '@/lib/api';
 import { formatDate, getStatusColor, validatePassword } from '@/lib/utils';
 import { Teacher, PageResponse } from '@/types';
 import { Plus, Search, GraduationCap, Pencil, Upload } from 'lucide-react';
@@ -48,6 +48,11 @@ export default function TeachersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  // Subject-class assignment state
+  const [availableSubjects, setAvailableSubjects] = useState<{ id: string; name: string }[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
+  const [subjectAssignments, setSubjectAssignments] = useState<{ subjectId: string; classId: string }[]>([]);
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<TeacherForm>({
     resolver: zodResolver(teacherSchema),
   });
@@ -87,8 +92,11 @@ export default function TeachersPage() {
   const onSubmit = async (data: TeacherForm) => {
     if (!currentSchool) return;
     try {
-      const payload = { ...data };
+      const payload: any = { ...data };
       if (!payload.password) delete payload.password;
+      if (modalMode === 'create' && subjectAssignments.length > 0) {
+        payload.subjectAssignments = subjectAssignments.filter((a) => a.subjectId && a.classId);
+      }
       if (modalMode === 'create') {
         await teacherApi.create(currentSchool.id, payload);
         toast.success('Teacher created successfully');
@@ -99,6 +107,7 @@ export default function TeachersPage() {
       setIsModalOpen(false);
       reset();
       setEditingTeacher(null);
+      setSubjectAssignments([]);
       setModalMode('create');
       fetchTeachers();
     } catch (error: any) {
@@ -106,10 +115,23 @@ export default function TeachersPage() {
     }
   };
 
-  const openCreate = () => {
+  const openCreate = async () => {
     setModalMode('create');
     setEditingTeacher(null);
     reset();
+    setSubjectAssignments([]);
+    if (currentSchool) {
+      try {
+        const [subRes, clsRes] = await Promise.all([
+          subjectApi.getAll(currentSchool.id, { size: 100 }),
+          classApi.getAll(currentSchool.id, { size: 100 }),
+        ]);
+        setAvailableSubjects((subRes.data as any)?.content?.map((s: any) => ({ id: s.id, name: s.name })) || []);
+        setAvailableClasses((clsRes.data as any)?.content?.map((c: any) => ({ id: c.id, name: c.name })) || []);
+      } catch {
+        // silent
+      }
+    }
     setIsModalOpen(true);
   };
 
@@ -302,6 +324,65 @@ export default function TeachersPage() {
               error={errors.password?.message}
             />
           </div>
+          {modalMode === 'create' && (
+            <div className="space-y-3">
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Assign Subjects & Classes (optional)
+                </label>
+                <p className="text-xs text-slate-500 mb-2">
+                  Select which subjects and classes this teacher should be assigned to immediately.
+                </p>
+                {subjectAssignments.map((assignment, idx) => (
+                  <div key={idx} className="flex items-center gap-2 mb-2">
+                    <select
+                      value={assignment.subjectId}
+                      onChange={(e) => {
+                        const updated = [...subjectAssignments];
+                        updated[idx].subjectId = e.target.value;
+                        setSubjectAssignments(updated);
+                      }}
+                      className="glass-input flex-1 text-sm"
+                    >
+                      <option value="">Select subject</option>
+                      {availableSubjects.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={assignment.classId}
+                      onChange={(e) => {
+                        const updated = [...subjectAssignments];
+                        updated[idx].classId = e.target.value;
+                        setSubjectAssignments(updated);
+                      }}
+                      className="glass-input flex-1 text-sm"
+                    >
+                      <option value="">Select class</option>
+                      {availableClasses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setSubjectAssignments(subjectAssignments.filter((_, i) => i !== idx))}
+                      className="text-red-500 hover:text-red-600 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setSubjectAssignments([...subjectAssignments, { subjectId: '', classId: '' }])}
+                  className="text-sm text-primary-500 hover:text-primary-600 font-medium"
+                >
+                  + Add another subject/class
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancel

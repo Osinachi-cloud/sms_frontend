@@ -39,8 +39,12 @@ interface Holiday {
 }
 
 export default function AcademicCalendarSettings() {
-  const { currentSchool } = useAuth();
+  const { currentSchool, isPlatformAdmin, isAppAdmin } = useAuth();
   const router = useRouter();
+
+  const roleName = currentSchool?.roleName?.toLowerCase() || '';
+  // Academic calendar is strictly admin-only (no temporary permissions)
+  const canManageCalendar = isPlatformAdmin() || isAppAdmin() || roleName.includes('admin');
 
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -266,17 +270,22 @@ export default function AcademicCalendarSettings() {
 
       {/* Sessions Section */}
       {activeSection === 'sessions' && (
-        <Card>
+          <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary-500" />
                 Academic Sessions
+                {!canManageCalendar && (
+                  <span className="ml-2 text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">Read-only</span>
+                )}
               </CardTitle>
-              <Button size="sm" onClick={openCreateSession}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Session
-              </Button>
+              {canManageCalendar && (
+                <Button size="sm" onClick={openCreateSession}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Session
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -307,14 +316,16 @@ export default function AcademicCalendarSettings() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-700" onClick={() => openEditSession(s)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteSession(s.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    {canManageCalendar && (
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-700" onClick={() => openEditSession(s)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteSession(s.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -331,11 +342,16 @@ export default function AcademicCalendarSettings() {
               <CardTitle className="text-base flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-primary-500" />
                 Terms / Semesters
+                {!canManageCalendar && (
+                  <span className="ml-2 text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">Read-only</span>
+                )}
               </CardTitle>
-              <Button size="sm" onClick={openCreateTerm}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Term
-              </Button>
+              {canManageCalendar && (
+                <Button size="sm" onClick={openCreateTerm}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Term
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -369,14 +385,16 @@ export default function AcademicCalendarSettings() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-700" onClick={() => openEditTerm(t)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteTerm(t.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      {canManageCalendar && (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-700" onClick={() => openEditTerm(t)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteTerm(t.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -394,11 +412,16 @@ export default function AcademicCalendarSettings() {
               <CardTitle className="text-base flex items-center gap-2">
                 <Sun className="w-5 h-5 text-primary-500" />
                 Public Holidays
+                {!canManageCalendar && (
+                  <span className="ml-2 text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">Read-only</span>
+                )}
               </CardTitle>
-              <Button size="sm" onClick={goToHolidaysPage}>
-                Manage Holidays
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
+              {canManageCalendar && (
+                <Button size="sm" onClick={goToHolidaysPage}>
+                  Manage Holidays
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -407,10 +430,12 @@ export default function AcademicCalendarSettings() {
                 <Sun className="w-10 h-10 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">No holidays configured.</p>
                 <p className="text-xs text-slate-400 mt-1">Attendance will not be counted on these dates.</p>
-                <Button size="sm" className="mt-4" onClick={goToHolidaysPage}>
-                  Go to Holidays Page
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
+                {canManageCalendar && (
+                  <Button size="sm" className="mt-4" onClick={goToHolidaysPage}>
+                    Go to Holidays Page
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

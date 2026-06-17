@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { studentApi, parentApi, classApi, teacherStudentApi } from '@/lib/api';
 import { getStatusColor, validatePassword, normalizeListResponse } from '@/lib/utils';
 import { Student, PageResponse } from '@/types';
-import { Plus, Search, Upload, User, ArrowRight, Check, ChevronRight, ChevronLeft, Users, LogIn, UserPlus, UserCheck, Pencil } from 'lucide-react';
+import { Plus, Search, Upload, User, ArrowRight, Check, ChevronRight, ChevronLeft, Users, LogIn, UserPlus, UserCheck, Pencil, X } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -96,6 +96,7 @@ export default function StudentsPage() {
   });
   const [existingParents, setExistingParents] = useState<ParentOption[]>([]);
   const [selectedParentId, setSelectedParentId] = useState('');
+  const [parentSearch, setParentSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -696,13 +697,47 @@ export default function StudentsPage() {
             {/* Select Existing Parent */}
             {parentMode === 'existing' && (
               <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
-                <p className="text-xs text-slate-500">Choose an existing parent/guardian already in the system.</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">Choose an existing parent/guardian already in the system.</p>
+                  {selectedParentId && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedParentId('')}
+                      className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Clear selection
+                    </button>
+                  )}
+                </div>
                 {errors.parentSelect && <p className="text-red-500 text-xs">{errors.parentSelect}</p>}
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search parents by name, email or phone..."
+                    value={parentSearch}
+                    onChange={(e) => setParentSearch(e.target.value)}
+                    className="glass-input w-full pl-9"
+                  />
+                </div>
                 <div className="max-h-60 overflow-y-auto scrollbar-hide space-y-2">
-                  {existingParents.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-4">No existing parents found. Create a new one instead.</p>
-                  ) : (
-                    existingParents.map((p) => (
+                  {(() => {
+                    const filtered = parentSearch.trim()
+                      ? existingParents.filter((p) =>
+                          p.fullName.toLowerCase().includes(parentSearch.toLowerCase()) ||
+                          (p.email || '').toLowerCase().includes(parentSearch.toLowerCase()) ||
+                          (p.phone || '').toLowerCase().includes(parentSearch.toLowerCase())
+                        )
+                      : existingParents;
+                    if (filtered.length === 0) {
+                      return (
+                        <p className="text-sm text-slate-400 text-center py-4">
+                          {parentSearch.trim() ? 'No parents match your search.' : 'No existing parents found. Create a new one instead.'}
+                        </p>
+                      );
+                    }
+                    return filtered.map((p) => (
                       <label
                         key={p.id}
                         className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
@@ -725,8 +760,8 @@ export default function StudentsPage() {
                         </div>
                         {selectedParentId === p.id && <Check className="w-4 h-4 text-primary-500" />}
                       </label>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
               </div>
             )}
