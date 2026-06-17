@@ -199,7 +199,15 @@ export function Header() {
 
           {/* Mobile school name */}
           {currentSchool && (
-            <div className="flex sm:hidden items-center gap-1 px-2 py-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/30">
+            <div className="flex sm:hidden items-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/30">
+              {currentSchool.logoUrl ? (
+                <img
+                  src={currentSchool.logoUrl}
+                  alt=""
+                  className="w-4 h-4 rounded object-contain flex-shrink-0"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : null}
               <span className="text-[10px] font-medium text-primary-700 dark:text-primary-400 truncate max-w-[80px]">
                 {currentSchool.name}
               </span>
@@ -209,6 +217,14 @@ export function Header() {
           {/* Desktop school dropdown */}
           {currentSchool && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-50 dark:bg-primary-900/30">
+              {currentSchool.logoUrl ? (
+                <img
+                  src={currentSchool.logoUrl}
+                  alt=""
+                  className="w-5 h-5 rounded object-contain flex-shrink-0"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : null}
               <span className="text-xs sm:text-sm font-medium text-primary-700 dark:text-primary-400 truncate max-w-[100px] lg:max-w-[180px]">
                 {currentSchool.name}
               </span>

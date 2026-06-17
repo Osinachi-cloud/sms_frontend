@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
-import { paymentApi, settingsApi, studentApi, dashboardApi } from '@/lib/api';
+import { paymentApi, settingsApi, studentApi, dashboardApi, termApi } from '@/lib/api';
 import { useInlinePayment } from '@/lib/payment-inline';
 import { Payment } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,6 +39,10 @@ interface FeeItem {
   discountDeadline?: string;
   paymentDeadline?: string;
   isActive: boolean;
+  sessionId?: string;
+  sessionName?: string;
+  termId?: string;
+  termName?: string;
 }
 
 interface PaymentAccount {
@@ -74,6 +78,9 @@ export default function StudentFeesPage() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedFeeForTransfer, setSelectedFeeForTransfer] = useState<FeeItem | null>(null);
   const [copiedAccountId, setCopiedAccountId] = useState<string | null>(null);
+  const [terms, setTerms] = useState<Array<{ id: string; name: string; sessionId: string }>>([]);
+  const [selectedTermId, setSelectedTermId] = useState<string>('');
+  const [currentTermId, setCurrentTermId] = useState<string>('');
 
   const { status: inlineStatus, startPayment, reset: resetInline } = useInlinePayment({
     schoolId: currentSchool?.id || '',
@@ -116,25 +123,99 @@ export default function StudentFeesPage() {
   const fetchConfig = useCallback(async () => {
     if (!currentSchool) return;
     try {
-      const res = await settingsApi.get(currentSchool.id);
-      const data = (res as any).data || {};
+      const [settingsRes, termsRes] = await Promise.all([
+        settingsApi.get(currentSchool.id),
+        termApi.getAll(currentSchool.id, { size: 100 }).catch(() => ({ data: null })),
+      ]);
+      const data = (settingsRes as any).data || {};
       setFeeItems(data.feeItems || []);
       setPaymentAccounts(data.paymentAccounts || []);
       setGatewayConfig(data);
+
+      // Load available terms and pick current
+      const allTerms = ((termsRes as any)?.data?.content || []) as Array<{ id: string; name: string; sessionId: string }>;
+      setTerms(allTerms);
+      const current = data.currentTerm || allTerms.find((t: any) => t.isCurrent);
+      if (current?.id) {
+        setCurrentTermId(current.id);
+        if (!selectedTermId) setSelectedTermId(current.id);
+      }
     } catch {
       // silent
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSchool]);
 
-  const fetchPayments = useCallback(async () => {
-    if (!currentSchool || !selectedStudentId) return;
+  const fetchPayments = useCallback(async (studentId?: string) => {
+    const sid = studentId || selectedStudentId;
+    if (!currentSchool || !sid) return;
+
+    // Strategy 1: direct payment API
     try {
-      const res = await paymentApi.getStudentPayments(currentSchool.id, selectedStudentId, { size: 200 });
-      setPayments(((res as any).data?.content || []) as Payment[]);
-    } catch {
-      // silent
+      const res = await paymentApi.getStudentPayments(currentSchool.id, sid, { size: 200 });
+      const fetched = ((res as any).data?.content || []) as Payment[];
+      if (fetched.length > 0) {
+        setPayments(fetched);
+        return; // done
+      }
+      console.warn(`Fees page: payment API returned empty for student ${sid}.`);
+    } catch (err: any) {
+      console.error('Fees page: payment API failed for', sid, err?.response?.status, err?.message);
     }
-  }, [currentSchool, selectedStudentId]);
+
+    // Strategy 2: fetch student detail which may include embedded payments
+    // (works even when /payments/student/{id} is admin-only)
+    try {
+      const res = await studentApi.getOne(currentSchool.id, sid);
+      const detail = (res as any).data;
+      if (detail?.payments && Array.isArray(detail.payments) && detail.payments.length > 0) {
+        console.log('Fees page: loaded payments from student detail');
+        setPayments(detail.payments as Payment[]);
+        return; // done
+      }
+    } catch (err: any) {
+      console.error('Fees page: student detail API failed for', sid, err?.response?.status, err?.message);
+    }
+
+    // Strategy 3: for student users, try dashboard API to discover canonical id
+    if (isStudent()) {
+      try {
+        const dashRes = await dashboardApi.getStudentDashboard(currentSchool.id);
+        const dashData = (dashRes as any).data;
+        const canonicalId = dashData?.student?.id;
+        if (canonicalId && canonicalId !== sid) {
+          console.log('Fees page: retrying with canonical studentId from dashboard:', canonicalId);
+          // update local state so next fetch uses correct id
+          setSelectedStudentId(canonicalId);
+          // also enrich students list
+          setStudents((prev) => {
+            if (prev.some((s) => s.id === canonicalId)) return prev;
+            return [...prev, {
+              id: canonicalId,
+              fullName: dashData.student.fullName,
+              admissionNumber: dashData.student.admissionNumber,
+              email: dashData.student.email,
+              classId: dashData.currentClass?.id,
+              className: dashData.currentClass?.name,
+            }];
+          });
+          // now fetch payments with canonical id
+          const retryRes = await paymentApi.getStudentPayments(currentSchool.id, canonicalId, { size: 200 });
+          const retryFetched = ((retryRes as any).data?.content || []) as Payment[];
+          if (retryFetched.length > 0) {
+            setPayments(retryFetched);
+            return;
+          }
+        }
+      } catch (err: any) {
+        console.error('Fees page: dashboard fallback failed', err?.message);
+      }
+    }
+
+    // Nothing worked — keep empty but show user feedback
+    setPayments([]);
+    console.error(`Fees page: all payment fetch strategies failed for student ${sid}.`);
+  }, [currentSchool, selectedStudentId, isStudent]);
 
   const fetchStudents = useCallback(async () => {
     if (!currentSchool) return;
@@ -220,18 +301,34 @@ export default function StudentFeesPage() {
     }
   }, [selectedStudentId, fetchPayments, students, fetchStudentDetails]);
 
+  // No separate retry effect needed — fetchPayments now handles all fallback strategies internally.
+
   useEffect(() => {
     setIsLoading(false);
   }, []);
 
   const getRelevantFees = (studentId: string) => {
-    const student = students.find((s) => s.id === studentId);
-    if (!student) return [];
+    // Use activeStudent fallback (includes auth context data) so parents/students
+    // still see fees even when studentApi.getAll fails.
+    const student = students.find((s) => s.id === studentId) ||
+      (activeStudent?.id === studentId ? activeStudent : undefined);
     return feeItems.filter((fee) => {
       if (!fee.isActive) return false;
+
+      // Term filter: if the fee has a termId, show only if it matches selected term.
+      // If term info is missing (backward compat), always show it.
+      if (fee.termId && selectedTermId) {
+        if (fee.termId !== selectedTermId) return false;
+      }
+
+      // Class filter
       if (fee.applicableToAll) return true;
-      if (!student.classId) return false;
-      return fee.applicableClassIds?.includes(student.classId);
+      if (student?.classId) {
+        return fee.applicableClassIds?.includes(student.classId);
+      }
+      // If no class info is available, only show applicable-to-all fees
+      // so the user doesn't get confused by unrelated fees.
+      return false;
     });
   };
 
@@ -401,6 +498,33 @@ export default function StudentFeesPage() {
         </Card>
       )}
 
+      {/* Term Filter */}
+      {terms.length > 0 && (
+        <Card>
+          <CardContent className="p-4 flex flex-wrap items-center gap-3">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Term:</label>
+            <div className="flex flex-wrap gap-2">
+              {terms.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTermId(t.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    selectedTermId === t.id
+                      ? 'bg-primary-500 text-white border-primary-500'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {t.name}
+                  {currentTermId === t.id && (
+                    <span className="ml-1.5 px-1 py-0.5 rounded bg-white/20 text-[9px] uppercase">Current</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Fee Products */}
       {activeStudent && (
         <div className="space-y-4">
@@ -408,7 +532,14 @@ export default function StudentFeesPage() {
             <h2 className="text-lg font-bold">
               Fee Products for {activeStudent.fullName}
             </h2>
-            <Badge variant="info">{activeStudent.className || 'No class'}</Badge>
+            <div className="flex items-center gap-2">
+              {selectedTermId && (
+                <Badge variant="info">
+                  {terms.find((t) => t.id === selectedTermId)?.name || 'Term'}
+                </Badge>
+              )}
+              <Badge variant="info">{activeStudent.className || 'No class'}</Badge>
+            </div>
           </div>
 
           {relevantFees.length === 0 ? (

@@ -211,16 +211,8 @@ export function Sidebar() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-3"
               >
-                <div className="flex-shrink-0">
-                  <AliSimbiLogo size="sm" />
-                </div>
-                {currentSchool && (
-                  <div className="overflow-hidden">
-                    <p className="text-[10px] sm:text-xs text-slate-500 truncate max-w-[180px]">{currentSchool.name}</p>
-                  </div>
-                )}
+                <AliSimbiLogo size="sm" />
               </motion.div>
             )}
           </AnimatePresence>

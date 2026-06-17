@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz[PHONE NUMBER_REDACTED]!@#$%^&*';
 
 export function useTextScramble(text: string, trigger: boolean, duration = 1200) {
   const [display, setDisplay] = useState(text);

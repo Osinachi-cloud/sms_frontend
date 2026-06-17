@@ -54,12 +54,13 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
   return <span>{count.toLocaleString()}{suffix}</span>;
 }
 
-function TypingCursor() {
+function TypingCursor({ show }: { show: boolean }) {
   return (
     <motion.span
       className="inline-block w-[3px] h-[1em] bg-primary-500 dark:bg-primary-400 ml-1 align-middle"
-      animate={{ opacity: [1, 0] }}
-      transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: show ? [1, 0] : 0 }}
+      transition={show ? { duration: 0.6, repeat: Infinity, repeatType: 'reverse' } : { duration: 0.3 }}
     />
   );
 }
@@ -75,8 +76,8 @@ export default function Home() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
 
-  const { display: line1 } = useTextScramble('Modern School', mounted, 800);
-  const { display: line2 } = useTextScramble('Management System', mounted, 1200);
+  const { display: line1, done: done1 } = useTextScramble('Modern School', mounted, 800);
+  const { display: line2, done: done2 } = useTextScramble('Management System', mounted, 1200);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -179,7 +180,7 @@ export default function Home() {
             </span>
             <span className="block bg-gradient-to-r from-primary-600 via-purple-500 to-pink-500 dark:from-primary-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent mt-2">
               {line2}
-              <TypingCursor />
+              <TypingCursor show={!done2} />
             </span>
           </motion.h1>
 

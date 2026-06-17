@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
-import { settingsApi, classApi } from '@/lib/api';
+import { settingsApi, classApi, academicSessionApi, termApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Tag, BookOpen, Users, Percent, Calendar, AlertTriangle, Edit3, X } from 'lucide-react';
@@ -22,9 +22,24 @@ interface FeeItem {
   discountDeadline?: string;
   paymentDeadline?: string;
   isActive: boolean;
+  sessionId?: string;
+  sessionName?: string;
+  termId?: string;
+  termName?: string;
 }
 
 interface Classroom {
+  id: string;
+  name: string;
+}
+
+interface AcademicTerm {
+  id: string;
+  name: string;
+  sessionId: string;
+}
+
+interface AcademicSession {
   id: string;
   name: string;
 }
@@ -50,7 +65,13 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
     discountDeadline: '',
     paymentDeadline: '',
     isActive: true,
+    sessionId: '',
+    termId: '',
   });
+  const [sessions, setSessions] = useState<AcademicSession[]>([]);
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState('');
+  const [currentTermId, setCurrentTermId] = useState('');
 
   const roleName = currentSchool?.roleName?.toLowerCase() || '';
   const isSchoolAdmin = roleName.includes('admin');
@@ -59,14 +80,27 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
   const fetchData = async () => {
     if (!schoolId) return;
     try {
-      const [settingsRes, classesRes] = await Promise.all([
+      const [settingsRes, classesRes, sessionsRes, currentRes] = await Promise.all([
         settingsApi.get(schoolId),
         classApi.getAll(schoolId, { size: 1000 }),
+        academicSessionApi.getAll(schoolId, { size: 100 }),
+        termApi.getCurrent(schoolId).catch(() => ({ data: null })),
       ]);
       const data = (settingsRes as any).data || {};
       const rawFees = data.feeItems || [];
       setFeeItems(rawFees.length ? rawFees : []);
       setClasses((classesRes as any).data?.content || (classesRes as any).data || []);
+      setSessions((sessionsRes as any).data?.content || (sessionsRes as any).data || []);
+      const currentTerm = (currentRes as any)?.data || data.currentTerm || null;
+      if (currentTerm) {
+        setCurrentTermId(currentTerm.id);
+        setCurrentSessionId(currentTerm.sessionId || '');
+        setForm((prev) => ({
+          ...prev,
+          termId: currentTerm.id,
+          sessionId: currentTerm.sessionId || '',
+        }));
+      }
     } catch {
       toast.error('Failed to load fee management data');
     } finally {
@@ -79,9 +113,14 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
   }, [schoolId]);
 
   const resetForm = () => {
+    const currentTerm = terms.find((t) => t.id === currentTermId);
     setForm({
       id: '', name: '', amount: 0, description: '', applicableClassIds: [], applicableToAll: true,
       discountType: 'none', discountValue: 0, discountDeadline: '', paymentDeadline: '', isActive: true,
+      sessionId: currentSessionId,
+      termId: currentTermId,
+      sessionName: sessions.find((s) => s.id === currentSessionId)?.name,
+      termName: currentTerm?.name,
     });
     setEditingId(null);
     setShowForm(false);
@@ -100,9 +139,14 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
     setIsSaving(true);
     try {
       let updated = [...feeItems];
+      const sessionName = sessions.find((s) => s.id === form.sessionId)?.name || '';
+      const termName = terms.find((t) => t.id === form.termId)?.name
+        || terms.find((t) => t.id === currentTermId)?.name || '';
       const payload: FeeItem = {
         ...form,
         id: editingId || crypto.randomUUID(),
+        sessionName,
+        termName,
       };
 
       if (editingId) {
@@ -247,6 +291,54 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
                       onChange={(e) => setForm({ ...form, description: e.target.value })}
                       placeholder="Short description of what this fee covers"
                     />
+                  </div>
+                </div>
+
+                {/* Session & Term */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Academic Session</label>
+                    <select
+                      value={form.sessionId}
+                      onChange={(e) => {
+                        const sid = e.target.value;
+                        setForm((prev) => ({ ...prev, sessionId: sid, termId: '' }));
+                      }}
+                      className="glass-input w-full"
+                    >
+                      <option value="">Select session</option>
+                      {sessions.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Term</label>
+                    <select
+                      value={form.termId}
+                      onChange={(e) => {
+                        const tid = e.target.value;
+                        const t = terms.find((term) => term.id === tid) || sessions.flatMap((s) => []).find(() => false);
+                        setForm((prev) => ({
+                          ...prev,
+                          termId: tid,
+                          sessionId: t?.sessionId || prev.sessionId,
+                        }));
+                      }}
+                      className="glass-input w-full"
+                    >
+                      <option value="">Select term</option>
+                      {terms
+                        .filter((t) => !form.sessionId || t.sessionId === form.sessionId)
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                    {currentTermId && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Defaults to current term. Change only if this fee is for another term.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -437,7 +529,7 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
                       </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
                         <Users className="w-3.5 h-3.5 text-slate-400" />
                         <span className="text-xs text-slate-500 truncate">{getClassNames(fee)}</span>
@@ -446,6 +538,12 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
                         <Percent className="w-3.5 h-3.5 text-slate-400" />
                         <span className="text-xs text-slate-500">
                           {fee.discountType === 'none' ? 'No discount' : `${fee.discountType === 'percentage' ? fee.discountValue + '%' : '₦' + Number(fee.discountValue).toLocaleString()} off`}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-xs text-slate-500 truncate">
+                          {fee.termName || fee.termId ? `${fee.sessionName || ''} — ${fee.termName || fee.termId}` : 'No term set'}
                         </span>
                       </div>
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
