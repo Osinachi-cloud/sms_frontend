@@ -478,6 +478,7 @@ export default function StudentsPage() {
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            onRowClick={(s: Student) => router.push(`/students/${s.id}`)}
             mobileCardRender={(s: Student) => (
               <div className="space-y-2 cursor-pointer" onClick={() => router.push(`/students/${s.id}`)}>
                 <div className="flex items-center justify-between">

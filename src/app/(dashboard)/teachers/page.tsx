@@ -9,8 +9,8 @@ import { useAuth } from '@/lib/auth';
 import { teacherApi, subjectApi, classApi } from '@/lib/api';
 import { formatDate, getStatusColor, validatePassword } from '@/lib/utils';
 import { Teacher, PageResponse } from '@/types';
-import { Plus, Search, GraduationCap, Pencil, Upload } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { Plus, Search, GraduationCap, Pencil, Upload, ArrowRight } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -37,6 +37,7 @@ type ModalMode = 'create' | 'edit';
 export default function TeachersPage() {
   const { currentSchool, hasPermission } = useAuth();
   const isAdmin = currentSchool?.roleName?.toLowerCase().includes('admin') ?? false;
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -202,12 +203,16 @@ export default function TeachersPage() {
       header: '',
       render: (teacher: Teacher) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(teacher)}>
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${teacher.id}`); }}>
+            View
+            <ArrowRight className="w-3 h-3 ml-1" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(teacher); }}>
             <Pencil className="w-4 h-4 mr-1" />
             Edit
           </Button>
           {(isAdmin || hasPermission('teacher.delete')) && (
-            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(teacher.id)}>
+            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(teacher.id); }}>
               Delete
             </Button>
           )}
@@ -271,6 +276,7 @@ export default function TeachersPage() {
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            onRowClick={(t: Teacher) => router.push(`/teachers/${t.id}`)}
           />
         </CardContent>
       </Card>

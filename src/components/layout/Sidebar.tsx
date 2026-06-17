@@ -81,6 +81,7 @@ const studentNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Results', href: '/student/results', icon: FileText },
   { name: 'My Fees', href: '/student/fees', icon: CreditCard },
+  { name: 'Timetable', href: '/timetable', icon: Clock },
   { name: 'Quizzes', href: '/quizzes', icon: ClipboardList },
   { name: 'Library', href: '/library', icon: Library },
   { name: 'CMS', href: '/cms', icon: BookOpen },
