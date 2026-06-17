@@ -139,7 +139,7 @@ export default function LoginPage() {
               />
               <span className="text-slate-600 dark:text-slate-400">Remember me</span>
             </label>
-            <Link href="#" className="text-primary-600 hover:underline font-medium">Forgot password?</Link>
+            <Link href="/forgot-password" className="text-primary-600 hover:underline font-medium">Forgot password?</Link>
           </div>
 
           <Button type="submit" className="w-full" isLoading={isLoading}>

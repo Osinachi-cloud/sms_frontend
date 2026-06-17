@@ -113,6 +113,15 @@ export const authApi = {
 
   switchSchool: (schoolId: string) =>
     api.post<AuthResponse>('/api/auth/switch-school', { schoolId }),
+
+  forgotPassword: (data: { email: string }) =>
+    api.post('/api/auth/forgot-password', data),
+
+  verifyOtp: (data: { email: string; otp: string }) =>
+    api.post('/api/auth/verify-otp', data),
+
+  resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
+    api.post('/api/auth/reset-password', data),
 };
 
 export const schoolApi = {
