@@ -22,6 +22,7 @@ interface AuthContextType {
   isGeneralAdmin: () => boolean;
   isStudent: () => boolean;
   isParent: () => boolean;
+  isTeacher: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -353,6 +354,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return currentSchool?.roleName === 'PARENT' || (!!user?.children && user.children.length > 0);
   };
 
+  const isTeacher = (): boolean => {
+    return currentSchool?.roleName === 'TEACHER';
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -372,6 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isGeneralAdmin,
         isStudent,
         isParent,
+        isTeacher,
       }}
     >
       {children}

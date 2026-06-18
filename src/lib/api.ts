@@ -428,10 +428,16 @@ export const timetableApi = {
     api.get(`/api/schools/${schoolId}/timetable/periods`, { params }),
   createPeriod: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/timetable/periods`, data),
+  updatePeriod: (schoolId: string, periodId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/timetable/periods/${periodId}`, data),
+  deletePeriod: (schoolId: string, periodId: string) =>
+    api.delete(`/api/schools/${schoolId}/timetable/periods/${periodId}`),
   getClassTimetable: (schoolId: string, classId: string) =>
     api.get(`/api/schools/${schoolId}/timetable/classes/${classId}`),
   createEntry: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/timetable/entries`, data),
+  deleteEntry: (schoolId: string, entryId: string) =>
+    api.delete(`/api/schools/${schoolId}/timetable/entries/${entryId}`),
 };
 
 export const libraryApi = {

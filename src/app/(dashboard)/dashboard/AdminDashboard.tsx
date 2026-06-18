@@ -83,7 +83,7 @@ export function AdminDashboard() {
     },
     {
       name: 'Revenue (Total)',
-      value: `₦${(stats.totalRevenue / 1000000).toFixed(1)}M`,
+      value: `₦${(stats.totalRevenue || 0).toLocaleString()}`,
       subValue: 'All payments',
       icon: CreditCard,
       color: 'from-orange-500 to-orange-600',
@@ -191,7 +191,7 @@ export function AdminDashboard() {
                   <div className="flex items-center gap-3">
                     <CreditCard className="w-8 h-8 text-green-500" />
                     <div>
-                      <p className="text-2xl font-bold">₦{((stats?.totalRevenue || 0) / 1000).toFixed(0)}K</p>
+                      <p className="text-2xl font-bold">₦{(stats?.totalRevenue || 0).toLocaleString()}</p>
                       <p className="text-sm text-slate-500">Total Revenue</p>
                     </div>
                   </div>

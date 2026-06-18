@@ -84,18 +84,28 @@ export default function PaymentsPage() {
       const data = response.data as PageResponse<Payment>;
       setPayments(data.content);
       setTotalPages(data.totalPages);
+    } catch (error) {
+      toast.error('Failed to load payments');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      const successful = data.content.filter(p => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
-      const pending = data.content.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0);
+  const fetchPaymentStats = async () => {
+    if (!currentSchool) return;
+    try {
+      const response = await paymentApi.getAll(currentSchool.id, { size: 10000 });
+      const data = response.data as PageResponse<Payment>;
+      const allPayments = data.content;
+      const successful = allPayments.filter(p => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
+      const pending = allPayments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0);
       setStats({
         total: data.totalElements,
         successful,
         pending,
       });
-    } catch (error) {
-      toast.error('Failed to load payments');
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // silent — stats are best-effort
     }
   };
 
@@ -124,6 +134,7 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     fetchPayments();
+    fetchPaymentStats();
     fetchStudents();
     fetchPaymentConfig();
   }, [currentSchool, page, statusFilter]);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/auth';
-import { teacherApi, classApi, subjectApi } from '@/lib/api';
+import { teacherApi, teacherAssignmentApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -39,8 +39,29 @@ export default function TeacherDetailPage() {
   const fetchTeacher = async () => {
     try {
       setIsLoading(true);
-      const response = await teacherApi.getOne(currentSchool!.id, teacherId);
-      setTeacher(response.data);
+      const [teacherRes, assignmentsRes] = await Promise.all([
+        teacherApi.getOne(currentSchool!.id, teacherId),
+        teacherAssignmentApi.getByTeacher(currentSchool!.id, teacherId, { size: 1000 }),
+      ]);
+      setTeacher(teacherRes.data);
+
+      const raw = (assignmentsRes.data as any)?.content || (Array.isArray(assignmentsRes.data) ? assignmentsRes.data : []);
+      const assignments = raw.filter((a: any) => a);
+
+      const classMap = new Map<string, { id: string; name: string }>();
+      const subjectMap = new Map<string, { id: string; name: string }>();
+
+      assignments.forEach((a: any) => {
+        if (a.classId && a.className) {
+          classMap.set(a.classId, { id: a.classId, name: a.className });
+        }
+        if (a.subjectId && a.subjectName) {
+          subjectMap.set(a.subjectId, { id: a.subjectId, name: a.subjectName });
+        }
+      });
+
+      setAssignedClasses(Array.from(classMap.values()));
+      setAssignedSubjects(Array.from(subjectMap.values()));
     } catch {
       toast.error('Failed to load teacher');
     } finally {

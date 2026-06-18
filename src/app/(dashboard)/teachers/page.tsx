@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
-import { teacherApi, subjectApi, classApi } from '@/lib/api';
+import { teacherApi, subjectApi, classApi, teacherAssignmentApi } from '@/lib/api';
 import { formatDate, getStatusColor, validatePassword } from '@/lib/utils';
 import { Teacher, PageResponse } from '@/types';
 import { Plus, Search, GraduationCap, Pencil, Upload, ArrowRight } from 'lucide-react';
@@ -95,7 +95,7 @@ export default function TeachersPage() {
     try {
       const payload: any = { ...data };
       if (!payload.password) delete payload.password;
-      if (modalMode === 'create' && subjectAssignments.length > 0) {
+      if (subjectAssignments.length > 0) {
         payload.subjectAssignments = subjectAssignments.filter((a) => a.subjectId && a.classId);
       }
       if (modalMode === 'create') {
@@ -136,7 +136,7 @@ export default function TeachersPage() {
     setIsModalOpen(true);
   };
 
-  const openEdit = (teacher: Teacher) => {
+  const openEdit = async (teacher: Teacher) => {
     setModalMode('edit');
     setEditingTeacher(teacher);
     reset({
@@ -148,6 +148,26 @@ export default function TeachersPage() {
       specialization: teacher.specialization || '',
       qualification: teacher.qualification || '',
     });
+    if (currentSchool) {
+      try {
+        const [subRes, clsRes, assignRes] = await Promise.all([
+          subjectApi.getAll(currentSchool.id, { size: 100 }),
+          classApi.getAll(currentSchool.id, { size: 100 }),
+          teacherAssignmentApi.getByTeacher(currentSchool.id, teacher.id, { size: 1000 }),
+        ]);
+        setAvailableSubjects((subRes.data as any)?.content?.map((s: any) => ({ id: s.id, name: s.name })) || []);
+        setAvailableClasses((clsRes.data as any)?.content?.map((c: any) => ({ id: c.id, name: c.name })) || []);
+
+        const assignments = (assignRes.data as any)?.content || (Array.isArray(assignRes.data) ? assignRes.data : []);
+        setSubjectAssignments(
+          assignments
+            .filter((a: any) => a.classId && a.subjectId)
+            .map((a: any) => ({ subjectId: a.subjectId, classId: a.classId }))
+        );
+      } catch {
+        setSubjectAssignments([]);
+      }
+    }
     setIsModalOpen(true);
   };
 
@@ -330,15 +350,16 @@ export default function TeachersPage() {
               error={errors.password?.message}
             />
           </div>
-          {modalMode === 'create' && (
-            <div className="space-y-3">
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Assign Subjects & Classes (optional)
-                </label>
-                <p className="text-xs text-slate-500 mb-2">
-                  Select which subjects and classes this teacher should be assigned to immediately.
-                </p>
+          <div className="space-y-3">
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Assign Subjects & Classes
+              </label>
+              <p className="text-xs text-slate-500 mb-2">
+                {modalMode === 'create'
+                  ? 'Select which subjects and classes this teacher should be assigned to immediately.'
+                  : ' Update which subjects and classes this teacher is assigned to.'}
+              </p>
                 {subjectAssignments.map((assignment, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-2">
                     <select
@@ -387,7 +408,6 @@ export default function TeachersPage() {
                 </button>
               </div>
             </div>
-          )}
 
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
