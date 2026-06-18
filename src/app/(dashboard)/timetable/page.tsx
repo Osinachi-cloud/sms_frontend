@@ -4,7 +4,7 @@ import { timetableApi, classApi, subjectApi, teacherApi, dashboardApi } from '@/
 import { useAuth } from '@/lib/auth';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Plus, X, Trash2, BookOpen, Users, GraduationCap, DoorOpen } from 'lucide-react';
+import { Clock, Plus, X, Trash2, BookOpen, Users, GraduationCap, DoorOpen, Pencil, ExternalLink } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { normalizeListResponse } from '@/lib/utils';
@@ -67,6 +67,7 @@ interface Entry {
   endTime: string;
   dayOfWeek: string;
   room: string;
+  link?: string;
 }
 
 export default function TimetablePage() {
@@ -82,6 +83,8 @@ export default function TimetablePage() {
   const [periods, setPeriods] = useState<Period[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEntryModal, setShowEntryModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [teacherMyClasses, setTeacherMyClasses] = useState<ClassAssignment[]>([]);
@@ -95,6 +98,7 @@ export default function TimetablePage() {
     periodId: '',
     dayOfWeek: 1,
     room: '',
+    link: '',
   });
 
   useEffect(() => {
@@ -241,6 +245,8 @@ export default function TimetablePage() {
   };
 
   const openAddModal = (prefillDay?: string, prefillPeriodId?: string) => {
+    setIsEditing(false);
+    setEditingEntryId('');
     setForm({
       classId: selectedClass || '',
       subjectId: '',
@@ -248,6 +254,25 @@ export default function TimetablePage() {
       periodId: prefillPeriodId || '',
       dayOfWeek: prefillDay ? dayValueMap[prefillDay] : 1,
       room: '',
+      link: '',
+    });
+    setShowEntryModal(true);
+  };
+
+  const openEditModal = (entry: Entry) => {
+    setIsEditing(true);
+    setEditingEntryId(entry.id);
+    setForm({
+      classId: entry.classId || selectedClass || '',
+      subjectId: entry.subjectId || '',
+      teacherId: entry.teacherId || '',
+      periodId: entry.periodId || '',
+      dayOfWeek: (() => {
+        const key = Object.keys(dayBackendMap).find((k) => dayBackendMap[k] === entry.dayOfWeek);
+        return key ? dayValueMap[key] : 1;
+      })(),
+      room: entry.room || '',
+      link: entry.link || '',
     });
     setShowEntryModal(true);
   };
@@ -264,24 +289,35 @@ export default function TimetablePage() {
         ? teacherMyClasses.find((a) => a.classId === form.classId)?.className
         : classes.find((c) => c.id === form.classId)?.name;
 
-      await timetableApi.createEntry(currentSchool.id, {
+      const payload = {
         classId: form.classId,
         subjectId: form.subjectId,
         teacherId: form.teacherId,
         periodId: form.periodId,
         dayOfWeek: form.dayOfWeek,
         room: form.room,
+        link: form.link || undefined,
         className,
-      });
-      toast.success('Timetable entry added');
+      };
+
+      if (isEditing && editingEntryId) {
+        await timetableApi.updateEntry(currentSchool.id, editingEntryId, payload);
+        toast.success('Timetable entry updated');
+      } else {
+        await timetableApi.createEntry(currentSchool.id, payload);
+        toast.success('Timetable entry added');
+      }
+
       setShowEntryModal(false);
+      setIsEditing(false);
+      setEditingEntryId('');
       if (selectedClass === form.classId) {
         loadTimetable();
       } else {
         setSelectedClass(form.classId);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to add entry');
+      toast.error(error.response?.data?.message || `Failed to ${isEditing ? 'update' : 'add'} entry`);
     } finally {
       setIsSubmitting(false);
     }
@@ -423,96 +459,119 @@ export default function TimetablePage() {
             </tr>
           </thead>
           <tbody>
-            {days
-              .filter((day) => entries.some((e) => e.dayOfWeek === dayBackendMap[day]) || periods.length > 0)
-              .map((day, rowIdx) => {
-                const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-                const isToday = day === todayName;
-                return (
-                  <tr
-                    key={day}
-                    className={`border-t border-slate-200 dark:border-slate-700 ${
-                      isToday ? 'bg-green-50/40 dark:bg-green-900/10' : rowIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
-                    }`}
-                  >
-                    {/* Day cell */}
-                    <td className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 align-top">
-                      <div className="flex flex-col">
-                        <span className={`text-[11px] font-extrabold uppercase tracking-wide ${isToday ? 'text-green-700 dark:text-green-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                          {day.substring(0, 3)}
-                        </span>
-                        {isToday && (
-                          <span className="text-[9px] font-bold text-green-600 dark:text-green-400">Today</span>
-                        )}
-                      </div>
-                    </td>
+            {days.map((day, rowIdx) => {
+              const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+              const isToday = day === todayName;
+              return (
+                <tr
+                  key={day}
+                  className={`border-t border-slate-200 dark:border-slate-700 ${
+                    isToday ? 'bg-green-50/40 dark:bg-green-900/10' : rowIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
+                  }`}
+                >
+                  {/* Day cell */}
+                  <td className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 align-top">
+                    <div className="flex flex-col">
+                      <span className={`text-[11px] font-extrabold uppercase tracking-wide ${isToday ? 'text-green-700 dark:text-green-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {day.substring(0, 3)}
+                      </span>
+                      {isToday && (
+                        <span className="text-[9px] font-bold text-green-600 dark:text-green-400">Today</span>
+                      )}
+                    </div>
+                  </td>
 
-                    {/* Period cells */}
-                    {periods.map((period) => {
-                      const entry = entries.find(
-                        (e) => e.dayOfWeek === dayBackendMap[day] && e.periodId === period.id
-                      );
-                      return (
-                        <td
-                          key={period.id}
-                          className="px-1.5 py-1.5 align-top border-r border-slate-200 dark:border-slate-700 last:border-r-0 min-w-[120px]"
-                        >
-                          {period.isBreak ? (
-                            <div className="h-[56px] flex items-center justify-center rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30">
-                              <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 tracking-wider uppercase">Break</span>
-                            </div>
-                          ) : entry ? (
-                            <div className="h-[56px] rounded-md border-l-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 p-1.5 relative group transition-shadow hover:shadow-sm">
-                              <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                                {entry.subjectName}
-                              </p>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                                {entry.teacherName}
-                              </p>
+                  {/* Period cells */}
+                  {periods.map((period) => {
+                    const entry = entries.find(
+                      (e) => e.dayOfWeek === dayBackendMap[day] && e.periodId === period.id
+                    );
+                    return (
+                      <td
+                        key={period.id}
+                        className="px-1.5 py-1.5 align-top border-r border-slate-200 dark:border-slate-700 last:border-r-0 min-w-[120px]"
+                      >
+                        {period.isBreak ? (
+                          <div className="h-[56px] flex items-center justify-center rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30">
+                            <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 tracking-wider uppercase">Break</span>
+                          </div>
+                        ) : entry ? (
+                          <div
+                            className="h-[56px] rounded-md border-l-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 p-1.5 relative group transition-shadow hover:shadow-sm cursor-pointer"
+                            onClick={() => {
+                              if (entry.link) {
+                                window.open(entry.link, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                            title={entry.link ? 'Click to join class' : ''}
+                          >
+                            <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                              {entry.subjectName}
+                            </p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {entry.teacherName}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
                               {entry.room ? (
-                                <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate mt-0.5 flex items-center gap-1">
+                                <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate flex items-center gap-1 flex-1">
                                   <span className="inline-block w-1 h-1 rounded-full bg-sky-400" />
                                   {entry.room}
                                 </p>
                               ) : (
-                                <p className="text-[9px] text-slate-300 dark:text-slate-600 mt-0.5">&nbsp;</p>
+                                <span className="flex-1" />
                               )}
-                              {canCreate && (
+                              {entry.link && (
+                                <span className="text-[9px] text-blue-500 flex items-center gap-0.5 shrink-0">
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                  Join
+                                </span>
+                              )}
+                            </div>
+                            {canCreate && (
+                              <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                 <button
-                                  onClick={() => handleDelete(entry.id)}
-                                  className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  onClick={(e) => { e.stopPropagation(); openEditModal(entry); }}
+                                  className="text-blue-400 hover:text-blue-600 p-0.5 rounded bg-white/80 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  title="Edit"
+                                >
+                                  <Pencil className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}
+                                  className="text-red-400 hover:text-red-600 p-0.5 rounded bg-white/80 dark:bg-slate-800/80 hover:bg-red-50 dark:hover:bg-red-900/20"
                                   title="Remove"
                                 >
                                   <Trash2 className="w-2.5 h-2.5" />
                                 </button>
-                              )}
-                            </div>
-                          ) : canCreate ? (
-                            <div
-                              className="h-[56px] flex items-center justify-center cursor-pointer rounded border border-dashed border-slate-200 dark:border-slate-700 hover:border-primary-400 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors"
-                              onClick={() => openAddModal(day, period.id)}
-                            >
-                              <Plus className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
-                            </div>
-                          ) : (
-                            <div className="h-[56px] flex items-center justify-center rounded">
-                              <span className="text-[10px] text-slate-200 dark:text-slate-700">—</span>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
+                              </div>
+                            )}
+                          </div>
+                        ) : canCreate ? (
+                          <div
+                            className="h-[56px] flex items-center justify-center cursor-pointer rounded border border-dashed border-slate-200 dark:border-slate-700 hover:border-primary-400 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors"
+                            onClick={() => openAddModal(day, period.id)}
+                          >
+                            <Plus className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
+                          </div>
+                        ) : (
+                          <div className="h-[56px] flex items-center justify-center rounded">
+                            <span className="text-[10px] text-slate-200 dark:text-slate-700">—</span>
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       <Modal
         isOpen={showEntryModal}
-        onClose={() => setShowEntryModal(false)}
-        title="Add Timetable Entry"
+        onClose={() => { setShowEntryModal(false); setIsEditing(false); setEditingEntryId(''); }}
+        title={isEditing ? 'Edit Timetable Entry' : 'Add Timetable Entry'}
         size="md"
       >
         <div className="space-y-4">
@@ -621,7 +680,7 @@ export default function TimetablePage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Room (optional)
+              Room / Venue (optional)
             </label>
             <div className="relative">
               <DoorOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -634,14 +693,39 @@ export default function TimetablePage() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Link (optional)
+            </label>
+            <div className="relative">
+              <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                value={form.link}
+                onChange={(e) => setForm({ ...form, link: e.target.value })}
+                placeholder="e.g. https://zoom.us/j/123456789"
+                className="glass-input w-full pl-9"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Zoom, Google Meet, Teams link, etc.</p>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowEntryModal(false)}>
+            <Button variant="secondary" onClick={() => { setShowEntryModal(false); setIsEditing(false); setEditingEntryId(''); }}>
               <X className="w-4 h-4 mr-1" />
               Cancel
             </Button>
             <Button onClick={handleSubmit} isLoading={isSubmitting}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Entry
+              {isEditing ? (
+                <>
+                  <Pencil className="w-4 h-4 mr-1" />
+                  Update Entry
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Entry
+                </>
+              )}
             </Button>
           </div>
         </div>

@@ -436,6 +436,8 @@ export const timetableApi = {
     api.get(`/api/schools/${schoolId}/timetable/classes/${classId}`),
   createEntry: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/timetable/entries`, data),
+  updateEntry: (schoolId: string, entryId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/timetable/entries/${entryId}`, data),
   deleteEntry: (schoolId: string, entryId: string) =>
     api.delete(`/api/schools/${schoolId}/timetable/entries/${entryId}`),
 };
