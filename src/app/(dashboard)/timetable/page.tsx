@@ -54,6 +54,11 @@ interface TeacherOption {
   fullName: string;
 }
 
+interface LinkItem {
+  title: string;
+  url: string;
+}
+
 interface Entry {
   id: string;
   classId: string;
@@ -68,6 +73,7 @@ interface Entry {
   dayOfWeek: string;
   room: string;
   link?: string;
+  links?: LinkItem[];
 }
 
 export default function TimetablePage() {
@@ -98,7 +104,7 @@ export default function TimetablePage() {
     periodId: '',
     dayOfWeek: 1,
     room: '',
-    link: '',
+    links: [] as LinkItem[],
   });
 
   useEffect(() => {
@@ -254,7 +260,7 @@ export default function TimetablePage() {
       periodId: prefillPeriodId || '',
       dayOfWeek: prefillDay ? dayValueMap[prefillDay] : 1,
       room: '',
-      link: '',
+      links: [],
     });
     setShowEntryModal(true);
   };
@@ -272,7 +278,11 @@ export default function TimetablePage() {
         return key ? dayValueMap[key] : 1;
       })(),
       room: entry.room || '',
-      link: entry.link || '',
+      links: entry.links && entry.links.length > 0
+        ? entry.links
+        : entry.link
+        ? [{ title: 'Link', url: entry.link }]
+        : [],
     });
     setShowEntryModal(true);
   };
@@ -296,7 +306,7 @@ export default function TimetablePage() {
         periodId: form.periodId,
         dayOfWeek: form.dayOfWeek,
         room: form.room,
-        link: form.link || undefined,
+        links: form.links && form.links.length > 0 ? form.links : undefined,
         className,
       };
 
@@ -496,35 +506,60 @@ export default function TimetablePage() {
                             <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 tracking-wider uppercase">Break</span>
                           </div>
                         ) : entry ? (
-                          <div
-                            className="h-[56px] rounded-md border-l-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 p-1.5 relative group transition-shadow hover:shadow-sm cursor-pointer"
-                            onClick={() => {
-                              if (entry.link) {
-                                window.open(entry.link, '_blank', 'noopener,noreferrer');
-                              }
-                            }}
-                            title={entry.link ? 'Click to join class' : ''}
-                          >
+                          <div className="h-[56px] rounded-md border-l-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 p-1.5 relative group transition-shadow hover:shadow-sm overflow-hidden">
                             <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
                               {entry.subjectName}
                             </p>
                             <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
                               {entry.teacherName}
                             </p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {entry.room ? (
-                                <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate flex items-center gap-1 flex-1">
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {entry.room && (
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 truncate flex items-center gap-0.5 shrink-0">
                                   <span className="inline-block w-1 h-1 rounded-full bg-sky-400" />
                                   {entry.room}
-                                </p>
-                              ) : (
-                                <span className="flex-1" />
+                                </span>
                               )}
-                              {entry.link && (
-                                <span className="text-[9px] text-blue-500 flex items-center gap-0.5 shrink-0">
+                              {entry.links && entry.links.length > 0 && (
+                                <div className="flex items-center gap-1 overflow-hidden">
+                                  {entry.links.slice(0, 2).map((li, i) => (
+                                    <a
+                                      key={i}
+                                      href={li.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 truncate max-w-[70px]"
+                                      title={li.title || li.url}
+                                    >
+                                      {li.title || 'Link'}
+                                    </a>
+                                  ))}
+                                  {entry.links.length > 2 && (
+                                    <a
+                                      href={entry.links[0].url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[9px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300"
+                                      title={`${entry.links.length} links — click to open first`}
+                                    >
+                                      +{entry.links.length - 2}
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                              {!entry.links?.length && entry.link && (
+                                <a
+                                  href={entry.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-[9px] text-blue-500 hover:text-blue-600 flex items-center gap-0.5 shrink-0"
+                                >
                                   <ExternalLink className="w-2.5 h-2.5" />
                                   Join
-                                </span>
+                                </a>
                               )}
                             </div>
                             {canCreate && (
@@ -693,20 +728,57 @@ export default function TimetablePage() {
             </div>
           </div>
 
+          {/* Links Manager */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Link (optional)
+              Course Materials / Links
             </label>
-            <div className="relative">
-              <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                value={form.link}
-                onChange={(e) => setForm({ ...form, link: e.target.value })}
-                placeholder="e.g. https://zoom.us/j/123456789"
-                className="glass-input w-full pl-9"
-              />
+            <div className="space-y-2">
+              {form.links.map((li, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    value={li.title}
+                    onChange={(e) => {
+                      const updated = [...form.links];
+                      updated[idx].title = e.target.value;
+                      setForm({ ...form, links: updated });
+                    }}
+                    placeholder="Title e.g. Chapter 1 Notes"
+                    className="glass-input flex-1 text-sm"
+                  />
+                  <input
+                    value={li.url}
+                    onChange={(e) => {
+                      const updated = [...form.links];
+                      updated[idx].url = e.target.value;
+                      setForm({ ...form, links: updated });
+                    }}
+                    placeholder="https://..."
+                    className="glass-input flex-[2] text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = form.links.filter((_, i) => i !== idx);
+                      setForm({ ...form, links: updated });
+                    }}
+                    className="text-red-400 hover:text-red-500 text-xs px-2"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, links: [...form.links, { title: '', url: '' }] })}
+                className="text-xs text-primary-500 hover:text-primary-600 font-medium"
+              >
+                + Add link
+              </button>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Zoom, Google Meet, Teams link, etc.</p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Add any external URL (Zoom, Google Drive, YouTube) or a link to your own course content.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

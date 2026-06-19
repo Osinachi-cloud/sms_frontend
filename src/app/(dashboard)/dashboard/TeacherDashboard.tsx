@@ -259,7 +259,7 @@ export function TeacherDashboardView() {
                     <span className="text-sm font-medium">Mark Attendance</span>
                   </div>
                 </Link>
-                <Link href="/cms/create">
+                <Link href="/content">
                   <div className="flex flex-col items-center gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors cursor-pointer">
                     <FileText className="w-8 h-8 text-purple-500" />
                     <span className="text-sm font-medium">Create Content</span>

@@ -600,7 +600,7 @@ export default function Home() {
             <div>
               <h4 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">Company</h4>
               <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-500">
-                <li><span className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors cursor-pointer">About</span></li>
+                <li><Link href="/about" className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">About</Link></li>
                 <li><span className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors cursor-pointer">Contact</span></li>
                 <li><span className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors cursor-pointer">Privacy</span></li>
               </ul>

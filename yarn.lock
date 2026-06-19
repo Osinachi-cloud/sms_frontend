@@ -293,6 +293,11 @@
   resolved "https://registry.yarnpkg.com/@tiptap/extension-code/-/extension-code-2.27.2.tgz#bfbaf07f67232144c6865ffbea20896e02c6fe6f"
   integrity sha512-7X9AgwqiIGXoZX7uvdHQsGsjILnN/JaEVtqfXZnPECzKGaWHeK/Ao4sYvIIIffsyZJA8k5DC7ny2/0sAgr2TuA==
 
+"@tiptap/extension-color@2.27.2":
+  version "2.27.2"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-color/-/extension-color-2.27.2.tgz#2716ff99b7ece8ad095283bb62c794df9eabb5dc"
+  integrity sha512-sOKCP8/2V3sRM3FdWgMe1lFE5ewsWNCRafiVoujS1+TTHGCj4jw6W+LiumBUk7cRI8kXW/rqGWVC4RVdknYUCA==
+
 "@tiptap/extension-document@^2.27.2":
   version "2.27.2"
   resolved "https://registry.yarnpkg.com/@tiptap/extension-document/-/extension-document-2.27.2.tgz#697ee04c03c7b37bc37d942d60fcc5fa304988b5"

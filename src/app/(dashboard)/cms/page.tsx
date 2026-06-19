@@ -6,9 +6,9 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
-import { cmsApi } from '@/lib/api';
-import { formatDate, getStatusColor } from '@/lib/utils';
-import { ContentItem, ContentFolder, PageResponse } from '@/types';
+import { cmsApi, classApi, subjectApi, dashboardApi } from '@/lib/api';
+import { formatDate, getStatusColor, cn } from '@/lib/utils';
+import { ContentItem, ContentFolder, PageResponse, Classroom, ClassAssignment } from '@/types';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -20,17 +20,26 @@ import {
   X,
   Clock,
   ChevronRight,
+  Pencil,
+  Trash2,
+  GraduationCap,
+  CheckSquare,
+  Square,
+  ExternalLink,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 
 const contentSchema = z.object({
   title: z.string().min(2, 'Title is required'),
   contentType: z.string(),
   richText: z.string().optional(),
+  subjectId: z.string().optional(),
+  targetClassIds: z.array(z.string()).optional(),
 });
 
 type ContentForm = z.infer<typeof contentSchema>;
@@ -56,30 +65,50 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function CMSPage() {
-  const { currentSchool, hasPermission } = useAuth();
+  const { currentSchool, hasPermission, user, isTeacher, isPlatformAdmin } = useAuth();
   const [folders, setFolders] = useState<ContentFolder[]>([]);
   const [content, setContent] = useState<ContentItem[]>([]);
+  const [classes, setClasses] = useState<Classroom[]>([]);
+  const [allSchoolSubjects, setAllSchoolSubjects] = useState<{ id: string; name: string; classIds?: string[] }[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<ClassAssignment[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all');
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ContentForm>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ContentForm>({
     resolver: zodResolver(contentSchema),
-    defaultValues: { contentType: 'NOTE' },
+    defaultValues: { contentType: 'NOTE', subjectId: '', targetClassIds: [] },
   });
 
   const fetchContent = async () => {
     if (!currentSchool) return;
     try {
-      const [contentRes, pendingRes, foldersRes] = await Promise.all([
-        cmsApi.getContent(currentSchool.id, { size: 20 }),
-        cmsApi.getPendingContent(currentSchool.id, { size: 100 }),
+      const params: any = { size: 20 };
+      if (user?.studentId) {
+        params.studentId = user.studentId;
+      }
+      const promises: any[] = [
+        cmsApi.getContent(currentSchool.id, params),
+        hasPermission('cms.content.approve')
+          ? cmsApi.getPendingContent(currentSchool.id, { size: 100 })
+          : Promise.resolve({ data: { totalElements: 0 } }),
         cmsApi.getFolders(currentSchool.id),
-      ]);
+        classApi.getAll(currentSchool.id, { size: 100 }),
+        subjectApi.getAll(currentSchool.id, { size: 100 }),
+      ];
+      if (isTeacher()) {
+        promises.push(dashboardApi.getTeacherDashboard(currentSchool.id));
+      }
+      const [contentRes, pendingRes, foldersRes, classesRes, subjectsRes, teacherDashRes] = await Promise.all(promises);
       setContent((contentRes.data as PageResponse<ContentItem>).content);
       setPendingCount((pendingRes.data as PageResponse<ContentItem>).totalElements);
       setFolders((foldersRes.data as any)?.content || []);
+      setClasses((classesRes.data as PageResponse<Classroom>).content || []);
+      setAllSchoolSubjects((subjectsRes.data as any).content.map((s: any) => ({ id: s.id, name: s.name, classIds: s.classIds || [] })) || []);
+      if (teacherDashRes) {
+        setTeacherAssignments(teacherDashRes.data?.myClasses || []);
+      }
     } catch (error) {
       toast.error('Failed to load content');
     } finally {
@@ -94,7 +123,11 @@ export default function CMSPage() {
   const onSubmit = async (data: ContentForm) => {
     if (!currentSchool) return;
     try {
-      await cmsApi.createContent(currentSchool.id, data);
+      await cmsApi.createContent(currentSchool.id, {
+        ...data,
+        subjectId: data.subjectId || undefined,
+        targetClassIds: data.targetClassIds?.length ? data.targetClassIds : undefined,
+      });
       toast.success('Content created successfully');
       setIsModalOpen(false);
       reset();
@@ -138,6 +171,58 @@ export default function CMSPage() {
       toast.error('Failed to submit');
     }
   };
+
+  const handleDelete = async (contentId: string) => {
+    if (!currentSchool) return;
+    if (!confirm('Are you sure you want to delete this content?')) return;
+    try {
+      await cmsApi.deleteContent(currentSchool.id, contentId);
+      toast.success('Content deleted');
+      fetchContent();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete content');
+    }
+  };
+
+  const canEdit = (item: ContentItem) => {
+    if (hasPermission('cms.content.edit.any')) return true;
+    return hasPermission('cms.content.edit');
+  };
+
+  const canDelete = (item: ContentItem) => {
+    if (hasPermission('cms.content.delete.any')) return true;
+    return hasPermission('cms.content.delete');
+  };
+
+  const getClassNames = (targetClassIds?: string[]) => {
+    if (!targetClassIds || targetClassIds.length === 0) return 'All classes';
+    return targetClassIds
+      .map((id) => classes.find((c) => c.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  // Teachers see only their assigned classes & subjects; admins see everything
+  const isAdmin = isPlatformAdmin() || currentSchool?.roleName === 'ADMIN' || currentSchool?.roleName === 'SUPER_ADMIN';
+
+  const assignedClassIds = new Set(teacherAssignments.map((a) => a.classId));
+  const assignedSubjectIds = new Set(teacherAssignments.map((a) => a.subjectId).filter(Boolean));
+
+  const availableClasses = isTeacher() && !isAdmin
+    ? classes.filter((c) => assignedClassIds.has(c.id))
+    : classes;
+
+  let availableSubjects = isTeacher() && !isAdmin
+    ? allSchoolSubjects.filter((s) => assignedSubjectIds.has(s.id))
+    : allSchoolSubjects;
+
+  // Fallback: if teacher has class assignments but no explicit subject assignments,
+  // derive available subjects from the classes they are assigned to
+  if (isTeacher() && !isAdmin && availableSubjects.length === 0 && assignedClassIds.size > 0) {
+    availableSubjects = allSchoolSubjects.filter((s) =>
+      s.classIds?.some((cid) => assignedClassIds.has(cid))
+    );
+  }
 
   if (!currentSchool) {
     return (
@@ -237,6 +322,7 @@ export default function CMSPage() {
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {displayContent.map((item) => {
                     const Icon = getContentIcon(item.contentType);
+                    const pathParts = [item.sessionName, item.termName, item.subjectName, item.folderName].filter(Boolean);
                     return (
                       <motion.div
                         key={item.id}
@@ -244,19 +330,54 @@ export default function CMSPage() {
                         animate={{ opacity: 1 }}
                         className="flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                          <Icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.title}</p>
-                          <p className="text-sm text-slate-500">
-                            by {item.teacherName || 'Unknown'} • {formatDate(item.createdAt)}
-                          </p>
-                        </div>
+                        <Link href={`/content/${item.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{item.title}</p>
+                            {pathParts.length > 0 && (
+                              <p className="text-[10px] text-slate-500 truncate">
+                                {pathParts.join(' › ')}
+                              </p>
+                            )}
+                            <p className="text-sm text-slate-500">
+                              by {item.teacherName || 'Unknown'} • {formatDate(item.createdAt)}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                              <GraduationCap className="w-3 h-3" />
+                              {getClassNames(item.targetClassIds)}
+                              <span className="mx-1">•</span>
+                              Last edited {formatDate(item.updatedAt)}
+                            </p>
+                          </div>
+                        </Link>
                         <Badge variant={getStatusBadge(item.status)}>
                           {item.status}
                         </Badge>
                         <div className="flex gap-2">
+                          <Link href={`/content/${item.id}`}>
+                            <Button variant="ghost" size="sm" title="View content">
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          {canEdit(item) && (
+                            <Link href={`/cms/create?edit=${item.id}`}>
+                              <Button variant="ghost" size="sm">
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                          )}
+                          {canDelete(item) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                           {item.status === 'DRAFT' && hasPermission('cms.content.submit') && (
                             <Button
                               variant="ghost"
@@ -321,6 +442,58 @@ export default function CMSPage() {
               <option value="VIDEO">Video</option>
               <option value="FILE">File</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Subject
+            </label>
+            <select {...register('subjectId')} className="glass-input w-full">
+              <option value="">No subject</option>
+              {availableSubjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {isTeacher() && !isAdmin && availableSubjects.length === 0 && (
+              <p className="text-xs text-amber-500 mt-1">You are not assigned to any subjects.</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Target Classes
+            </label>
+            {availableClasses.length === 0 ? (
+              <p className="text-xs text-slate-500">No classes available.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {availableClasses.map((cls) => {
+                  const selected = (watch('targetClassIds') || []).includes(cls.id);
+                  return (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => {
+                        const current = watch('targetClassIds') || [];
+                        if (selected) {
+                          setValue('targetClassIds', current.filter((id: string) => id !== cls.id), { shouldDirty: true });
+                        } else {
+                          setValue('targetClassIds', [...current, cls.id], { shouldDirty: true });
+                        }
+                      }}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                        selected
+                          ? 'bg-primary-100 text-primary-700 border-primary-200 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-800'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                      )}
+                    >
+                      {selected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                      {cls.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mt-2">Select one or more classes. Leave empty for all classes.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">

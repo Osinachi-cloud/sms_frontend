@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { TiptapEditor } from '@/components/editor/TiptapEditor';
 import { useAuth } from '@/lib/auth';
-import { rawCmsApi } from '@/lib/api';
+import { rawCmsApi, cmsApi, classApi, subjectApi, dashboardApi } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { ClassAssignment } from '@/types';
 import { motion } from 'framer-motion';
 import {
   Save,
@@ -19,6 +21,10 @@ import {
   Calendar,
   Star,
   Eye,
+  Trash2,
+  GraduationCap,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -43,7 +49,7 @@ export default function CreateContentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
-  const { currentSchool, hasPermission } = useAuth();
+  const { currentSchool, hasPermission, isTeacher, isPlatformAdmin } = useAuth();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -63,9 +69,19 @@ export default function CreateContentPage() {
 
   const [contentStatus, setContentStatus] = useState('DRAFT');
   const [isFeatured, setIsFeatured] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [targetClassIds, setTargetClassIds] = useState<string[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [allSchoolSubjects, setAllSchoolSubjects] = useState<{ id: string; name: string; classIds?: string[] }[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<ClassAssignment[]>([]);
+  const [subjectId, setSubjectId] = useState('');
+  const [contentType, setContentType] = useState('NOTE');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
 
   useEffect(() => {
     fetchFolders();
+    fetchClasses();
+    fetchSubjects();
     if (editId) {
       fetchContent(editId);
     }
@@ -81,6 +97,30 @@ export default function CreateContentPage() {
     }
   };
 
+  const fetchClasses = async () => {
+    if (!currentSchool?.id) return;
+    try {
+      const response = await classApi.getAll(currentSchool.id, { size: 100 });
+      setClasses(response.data.content || []);
+    } catch (error) {
+      console.error('Failed to fetch classes:', error);
+    }
+  };
+
+  const fetchSubjects = async () => {
+    if (!currentSchool?.id) return;
+    try {
+      const [subjectsRes, teacherDashRes] = await Promise.all([
+        subjectApi.getAll(currentSchool.id, { size: 100 }),
+        isTeacher() ? dashboardApi.getTeacherDashboard(currentSchool.id) : Promise.resolve({ data: { myClasses: [] } }),
+      ]);
+      setAllSchoolSubjects((subjectsRes.data as any).content.map((s: any) => ({ id: s.id, name: s.name, classIds: s.classIds || [] })) || []);
+      setTeacherAssignments(teacherDashRes.data?.myClasses || []);
+    } catch (error) {
+      console.error('Failed to fetch subjects:', error);
+    }
+  };
+
   const fetchContent = async (id: string) => {
     if (!currentSchool?.id) return;
     try {
@@ -92,6 +132,11 @@ export default function CreateContentPage() {
       setTags(content.tags?.join(', ') || '');
       setContentStatus(content.status);
       setIsFeatured(content.isFeatured || false);
+      setUpdatedAt(content.updatedAt || null);
+      setTargetClassIds(content.targetClassIds || []);
+      setSubjectId(content.subjectId || '');
+      setContentType(content.contentType || 'NOTE');
+      setThumbnailUrl(content.thumbnailUrl || '');
     } catch (error) {
       toast.error('Failed to load content');
       router.push('/cms');
@@ -120,9 +165,13 @@ export default function CreateContentPage() {
       const payload = {
         title: title.trim(),
         body,
+        contentType,
         folderId: folderId || null,
+        subjectId: subjectId || null,
         schoolId: currentSchool?.id,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+        targetClassIds: targetClassIds.length ? targetClassIds : undefined,
+        thumbnailUrl: thumbnailUrl || undefined,
       };
 
       let response;
@@ -143,7 +192,7 @@ export default function CreateContentPage() {
           toast.error('Content ID is missing');
           return;
         }
-        await rawCmsApi.submitContent(contentId);
+        await cmsApi.submitForApproval(currentSchool!.id, contentId);
         toast.success('Content submitted for approval');
       } else {
         toast.success(editId ? 'Content saved' : 'Draft created');
@@ -200,6 +249,40 @@ export default function CreateContentPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!editId || !currentSchool) return;
+    if (!confirm('Are you sure you want to delete this content?')) return;
+    try {
+      await cmsApi.deleteContent(currentSchool.id, editId);
+      toast.success('Content deleted');
+      router.push('/cms');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete content');
+    }
+  };
+
+  // Teachers see only their assigned classes & subjects; admins see everything
+  const isAdmin = isPlatformAdmin() || currentSchool?.roleName === 'ADMIN' || currentSchool?.roleName === 'SUPER_ADMIN';
+
+  const assignedClassIds = new Set(teacherAssignments.map((a) => a.classId));
+  const assignedSubjectIds = new Set(teacherAssignments.map((a) => a.subjectId).filter(Boolean));
+
+  const availableClasses = isTeacher() && !isAdmin
+    ? classes.filter((c) => assignedClassIds.has(c.id))
+    : classes;
+
+  let availableSubjects = isTeacher() && !isAdmin
+    ? allSchoolSubjects.filter((s) => assignedSubjectIds.has(s.id))
+    : allSchoolSubjects;
+
+  // Fallback: if teacher has class assignments but no explicit subject assignments,
+  // derive available subjects from the classes they are assigned to
+  if (isTeacher() && !isAdmin && availableSubjects.length === 0 && assignedClassIds.size > 0) {
+    availableSubjects = allSchoolSubjects.filter((s) =>
+      s.classIds?.some((cid) => assignedClassIds.has(cid))
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -238,6 +321,14 @@ export default function CreateContentPage() {
                   Schedule
                 </Button>
               )}
+              <Button
+                variant="outline"
+                onClick={handleDelete}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
             </>
           )}
           <Button
@@ -358,6 +449,23 @@ export default function CreateContentPage() {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium mb-1">Subject</label>
+                  <select
+                    value={subjectId}
+                    onChange={(e) => setSubjectId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">No subject</option>
+                    {availableSubjects.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  {isTeacher() && !isAdmin && availableSubjects.length === 0 && (
+                    <p className="text-xs text-amber-500 mt-1">You are not assigned to any subjects.</p>
+                  )}
+                </div>
+
                 <Input
                   label="Tags"
                   value={tags}
@@ -365,9 +473,92 @@ export default function CreateContentPage() {
                   placeholder="math, science, grade-10"
                 />
                 <p className="text-xs text-slate-500 mt-1">Separate tags with commas</p>
+
+                <Input
+                  label="Thumbnail URL"
+                  value={thumbnailUrl}
+                  onChange={(e) => setThumbnailUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                />
+                {thumbnailUrl && (
+                  <img
+                    src={thumbnailUrl}
+                    alt="Thumbnail preview"
+                    className="w-full h-24 object-cover rounded-lg mt-2"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
               </CardContent>
             </Card>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Audience</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Target Classes</label>
+                  {availableClasses.length === 0 ? (
+                    <p className="text-xs text-slate-500">No classes available.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {availableClasses.map((cls) => {
+                        const selected = targetClassIds.includes(cls.id);
+                        return (
+                          <button
+                            key={cls.id}
+                            type="button"
+                            onClick={() => {
+                              if (selected) {
+                                setTargetClassIds(targetClassIds.filter((id) => id !== cls.id));
+                              } else {
+                                setTargetClassIds([...targetClassIds, cls.id]);
+                              }
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                              selected
+                                ? 'bg-primary-100 text-primary-700 border-primary-200 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-800'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                            )}
+                          >
+                            {selected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                            {cls.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500 mt-2">Select one or more classes. Leave empty for all classes.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {editId && updatedAt && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Last Edited</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-500">
+                    {new Date(updatedAt).toLocaleString()}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </div>
       </div>
 

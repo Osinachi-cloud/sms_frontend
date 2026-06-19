@@ -13,6 +13,7 @@ const SCHOOL_ONLY_PATHS = [
   '/teachers',
   '/classes',
   '/users',
+  '/content',
   '/cms',
   '/calendar',
   '/timetable',

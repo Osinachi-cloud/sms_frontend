@@ -205,17 +205,29 @@ export const cmsApi = {
   getFolders: (schoolId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/cms/folders`, { params }),
 
+  getFoldersBySubject: (schoolId: string) =>
+    api.get(`/api/schools/${schoolId}/cms/folders/by-subject`),
+
   createFolder: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/cms/folders`, data),
 
-  getContent: (schoolId: string, params?: { page?: number; size?: number; status?: string }) =>
+  updateFolder: (schoolId: string, folderId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/cms/folders/${folderId}`, data),
+
+  deleteFolder: (schoolId: string, folderId: string) =>
+    api.delete(`/api/schools/${schoolId}/cms/folders/${folderId}`),
+
+  getContent: (schoolId: string, params?: { page?: number; size?: number; status?: string; studentId?: string }) =>
     api.get(`/api/schools/${schoolId}/cms/content`, { params }),
+
+  getContentByFolder: (schoolId: string, folderId: string, studentId?: string) =>
+    api.get(`/api/schools/${schoolId}/cms/content/by-folder/${folderId}`, { params: { studentId } }),
 
   getPendingContent: (schoolId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/cms/content/pending`, { params }),
 
-  getContentItem: (schoolId: string, contentId: string) =>
-    api.get(`/api/schools/${schoolId}/cms/content/${contentId}`),
+  getContentItem: (schoolId: string, contentId: string, studentId?: string) =>
+    api.get(`/api/schools/${schoolId}/cms/content/${contentId}`, { params: { studentId } }),
 
   createContent: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/cms/content`, data),
@@ -234,6 +246,14 @@ export const cmsApi = {
 
   deleteContent: (schoolId: string, contentId: string) =>
     api.delete(`/api/schools/${schoolId}/cms/content/${contentId}`),
+
+  uploadFile: (schoolId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/schools/${schoolId}/cms/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 export const paymentApi = {

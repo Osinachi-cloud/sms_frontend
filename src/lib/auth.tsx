@@ -64,7 +64,7 @@ const MOCK_USERS: Record<string, User> = {
   },
   teacher: {
     id: 'u-gf-teacher',
-    email: '[EMAIL_REDACTED]',
+    email: 'teacher@greenfield.edu',
     fullName: 'Mr. John Okafor',
     platformRole: '',
     schools: [
@@ -76,8 +76,8 @@ const MOCK_USERS: Record<string, User> = {
         permissions: [
           'student.read', 'student.grades.read', 'student.grades.manage',
           'student.attendance.read', 'student.attendance.manage',
-          'class.read', 'cms.folder.read', 'cms.content.read', 'cms.content.create',
-          'cms.content.edit', 'cms.content.submit', 'subject.read',
+          'class.read', 'cms.folder.read', 'cms.folder.create', 'cms.content.read', 'cms.content.create',
+          'cms.content.edit', 'cms.content.delete', 'cms.content.submit', 'subject.read',
           'timetable.read', 'timetable.create', 'timetable.update', 'timetable.delete',
         ],
       },
@@ -123,7 +123,7 @@ const MOCK_USERS: Record<string, User> = {
   },
   'temp-admin-teacher': {
     id: 'u-gf-teacher-temp',
-    email: '[EMAIL_REDACTED]',
+    email: 'teacher@greenfield.edu',
     fullName: 'Mr. John Okafor (Temp Admin)',
     platformRole: '',
     schools: [
@@ -135,8 +135,8 @@ const MOCK_USERS: Record<string, User> = {
         permissions: [
           'student.read', 'student.grades.read', 'student.grades.manage',
           'student.attendance.read', 'student.attendance.manage',
-          'class.read', 'cms.folder.read', 'cms.content.read', 'cms.content.create',
-          'cms.content.edit', 'cms.content.submit', 'subject.read',
+          'class.read', 'cms.folder.read', 'cms.folder.create', 'cms.content.read', 'cms.content.create',
+          'cms.content.edit', 'cms.content.delete', 'cms.content.submit', 'subject.read',
           'timetable.read', 'timetable.create', 'timetable.update', 'timetable.delete',
         ],
       },

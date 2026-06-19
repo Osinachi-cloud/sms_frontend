@@ -102,7 +102,7 @@ export function Header() {
                       key={i}
                       href={
                         r.type === 'CONTENT'
-                          ? `/cms`
+                          ? `/content`
                           : r.type === 'BOOK'
                           ? `/library`
                           : '/'

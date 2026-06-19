@@ -258,7 +258,7 @@ export function AdminDashboard() {
                   {[
                     { label: 'Add Student', icon: Users, href: '/students?action=add' },
                     { label: 'Add Teacher', icon: GraduationCap, href: '/teachers?action=add' },
-                    { label: 'Create Content', icon: BookOpen, href: '/cms/create' },
+                    { label: 'Create Content', icon: BookOpen, href: '/content' },
                     { label: 'View Payments', icon: CreditCard, href: '/payments' },
                   ].map((action, index) => (
                     <Link

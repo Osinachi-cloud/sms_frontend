@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
 import { useAuth } from '@/lib/auth';
-import { promotionApi, classApi } from '@/lib/api';
+import { promotionApi, classApi, dashboardApi } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { School, Users, Check, AlertCircle, GraduationCap, ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -42,13 +42,36 @@ export default function PromotionsPage() {
 
   useEffect(() => {
     if (!currentSchool) return;
-    classApi.getAll(currentSchool.id, { size: 100 })
+    // Try teacher dashboard first to get assigned classes only
+    dashboardApi.getTeacherDashboard(currentSchool.id)
       .then((res: any) => {
-        const data = normalizeListResponse<any>(res.data).items;
-        setClasses(data);
-        if (data.length > 0) setSelectedClassId(data[0].id);
+        const myClasses = res.data?.myClasses || [];
+        if (myClasses.length > 0) {
+          const mapped: Classroom[] = myClasses.map((c: any) => ({
+            id: c.classId,
+            name: c.className,
+            section: c.section,
+          }));
+          // Deduplicate by classId
+          const unique = Array.from(new Map(mapped.map((c) => [c.id, c])).values());
+          setClasses(unique as Classroom[]);
+          setSelectedClassId((unique[0] as Classroom).id);
+        } else {
+          // Fallback for admins / users without teacher profile
+          return loadAllClasses();
+        }
       })
-      .catch(() => toast.error('Failed to load classes'));
+      .catch(() => loadAllClasses());
+
+    function loadAllClasses() {
+      classApi.getAll(currentSchool!.id, { size: 100 })
+        .then((res: any) => {
+          const data = normalizeListResponse<any>(res.data).items;
+          setClasses(data);
+          if (data.length > 0) setSelectedClassId(data[0].id);
+        })
+        .catch(() => toast.error('Failed to load classes'));
+    }
   }, [currentSchool]);
 
   useEffect(() => {

@@ -113,9 +113,16 @@ export interface ContentItem {
   contentType: string;
   folderId?: string;
   folderName?: string;
+  subjectId?: string;
+  subjectName?: string;
+  termId?: string;
+  termName?: string;
+  sessionId?: string;
+  sessionName?: string;
   teacherId?: string;
   teacherName?: string;
   richText?: string;
+  body?: string;
   fileUrls: string[];
   videoLinks: string[];
   dueDate?: string;
@@ -126,6 +133,9 @@ export interface ContentItem {
   expiresAt?: string;
   version: number;
   metadata: Record<string, any>;
+  targetClassIds?: string[];
+  tags?: string[];
+  thumbnailUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +148,14 @@ export interface ContentFolder {
   classId?: string;
   subjectId?: string;
   sortOrder: number;
+  createdAt?: string;
+}
+
+export interface SubjectWithFolders {
+  id: string;
+  name: string;
+  code?: string;
+  folders: ContentFolder[];
 }
 
 export interface Payment {
