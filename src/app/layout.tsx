@@ -3,8 +3,13 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'Ali & Simbi — Multi-Tenant School Management',
+  title: { default: 'Ali & Simbi', template: '%s | Ali & Simbi' },
   description: 'Production-grade multi-tenant School Management SaaS platform',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

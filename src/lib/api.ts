@@ -418,16 +418,28 @@ export const parentApi = {
 };
 
 export const quizApi = {
-  getAll: (schoolId: string, params?: { page?: number; size?: number }) =>
+  getAll: (schoolId: string, params?: { page?: number; size?: number; studentId?: string }) =>
     api.get(`/api/schools/${schoolId}/quizzes`, { params }),
-  getOne: (quizId: string) =>
-    api.get(`/api/schools/any/quizzes/${quizId}`),
+  getOne: (schoolId: string, quizId: string, studentId?: string) =>
+    api.get(`/api/schools/${schoolId}/quizzes/${quizId}`, { params: studentId ? { studentId } : undefined }),
   create: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/quizzes`, data),
-  start: (quizId: string, studentId: string) =>
-    api.post(`/api/schools/any/quizzes/${quizId}/start`, { studentId }),
-  submit: (quizId: string, data: any) =>
-    api.post(`/api/schools/any/quizzes/${quizId}/submit`, data),
+  update: (schoolId: string, quizId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/quizzes/${quizId}`, data),
+  delete: (schoolId: string, quizId: string) =>
+    api.delete(`/api/schools/${schoolId}/quizzes/${quizId}`),
+  start: (schoolId: string, quizId: string, studentId: string) =>
+    api.post(`/api/schools/${schoolId}/quizzes/${quizId}/start`, { studentId }),
+  submit: (schoolId: string, quizId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/quizzes/${quizId}/submit`, data),
+  getSubmissions: (schoolId: string, quizId: string) =>
+    api.get(`/api/schools/${schoolId}/quizzes/${quizId}/submissions`),
+  getStudentHistory: (schoolId: string, studentId: string) =>
+    api.get(`/api/schools/${schoolId}/quizzes/student/${studentId}/history`),
+  toggleEnabled: (schoolId: string, quizId: string) =>
+    api.post(`/api/schools/${schoolId}/quizzes/${quizId}/toggle`),
+  addToGrades: (schoolId: string, quizId: string) =>
+    api.post(`/api/schools/${schoolId}/quizzes/${quizId}/add-to-grades`),
 };
 
 export const classApi = {

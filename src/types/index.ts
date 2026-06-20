@@ -374,3 +374,89 @@ export interface StudentDetail extends Student {
   }[];
   attendanceSummary?: AttendanceSummary;
 }
+
+export interface Quiz {
+  id: string;
+  title: string;
+  description?: string;
+  subjectId?: string;
+  subjectName?: string;
+  classId?: string;
+  className?: string;
+  targetClassIds?: string[];
+  durationMinutes?: number;
+  totalMarks?: number;
+  passMark?: number;
+  shuffleQuestions?: boolean;
+  showResultsImmediately?: boolean;
+  showCorrectAnswers?: boolean;
+  maxAttempts?: number;
+  startTime?: string;
+  endTime?: string;
+  status?: string;
+  quizType?: 'EXAM' | 'TEST' | 'QUIZ';
+  isEnabled?: boolean;
+  termId?: string;
+  termName?: string;
+  sessionId?: string;
+  sessionName?: string;
+  questionCount?: number;
+  hasAttempted?: boolean;
+  attemptsUsed?: number;
+  bestScore?: number;
+  questions?: QuizQuestion[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface QuizQuestion {
+  id?: string;
+  questionText: string;
+  questionType: 'MCQ' | 'CHECKBOX' | 'SHORT_ANSWER' | 'PARAGRAPH' | 'TRUE_FALSE' | 'FILL_BLANK' | 'MATCHING';
+  options?: Array<{ label: string; value: string } | string>;
+  marks?: number;
+  orderIndex?: number;
+  explanation?: string;
+  correctAnswer?: string;
+  correctAnswers?: string[];
+}
+
+export interface QuizSubmission {
+  id: string;
+  quizId: string;
+  studentId: string;
+  startedAt?: string;
+  submittedAt?: string;
+  score?: number;
+  totalMarks?: number;
+  percentage?: number;
+  gradeLetter?: string;
+  status: string;
+  attemptNumber?: number;
+}
+
+export interface QuizAnswer {
+  questionId: string;
+  questionText?: string;
+  userAnswer?: string;
+  selectedOptions?: string[];
+  correctAnswer?: string;
+  correctAnswers?: string[];
+  isCorrect?: boolean;
+  marksObtained?: number;
+  totalMarks?: number;
+  explanation?: string;
+}
+
+export interface QuizResult {
+  submissionId: string;
+  quizId: string;
+  quizTitle: string;
+  score?: number;
+  totalMarks?: number;
+  percentage?: number;
+  gradeLetter?: string;
+  status: string;
+  showCorrectAnswers?: boolean;
+  answers?: QuizAnswer[];
+}
