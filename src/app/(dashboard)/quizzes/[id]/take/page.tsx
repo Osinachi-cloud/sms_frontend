@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Quiz, QuizQuestion, QuizResult } from '@/types';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, ChevronLeft, ChevronRight, AlertCircle, CheckCircle, Trophy, XCircle, BookOpen, ArrowLeft } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, AlertCircle, CheckCircle, Trophy, XCircle, BookOpen, ArrowLeft, Eye } from 'lucide-react';
 import Link from 'next/link';
 
 function formatTime(seconds: number) {
@@ -22,14 +22,17 @@ function formatTime(seconds: number) {
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentSchool, user } = useAuth();
+  const { currentSchool, user, isTeacher, isPlatformAdmin } = useAuth();
   const quizId = params?.id as string;
   const schoolId = currentSchool?.id;
   const studentId = user?.studentId;
 
+  const isAdmin = isPlatformAdmin() || currentSchool?.roleName === 'ADMIN' || currentSchool?.roleName === 'SUPER_ADMIN';
+  const isPreview = isAdmin || isTeacher();
+
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(isPreview); // Preview auto-starts
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -37,26 +40,32 @@ export default function TakeQuizPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const loadQuiz = useCallback(async () => {
-    if (!schoolId || !quizId || !studentId) return;
+    if (!schoolId || !quizId) return;
     try {
-      const res = await quizApi.start(schoolId, quizId, studentId);
-      setQuiz(res.data);
-      const dur = res.data.durationMinutes || 30;
-      setTimeLeft(dur * 60);
+      if (isPreview) {
+        // Teachers/admins preview via getOne — no submission tracking needed
+        const res = await quizApi.getOne(schoolId, quizId);
+        setQuiz(res.data);
+      } else if (studentId) {
+        const res = await quizApi.start(schoolId, quizId, studentId);
+        setQuiz(res.data);
+        const dur = res.data.durationMinutes || 30;
+        setTimeLeft(dur * 60);
+      }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to start quiz');
+      toast.error(err?.response?.data?.message || 'Failed to load quiz');
     } finally {
       setLoading(false);
     }
-  }, [schoolId, quizId, studentId]);
+  }, [schoolId, quizId, studentId, isPreview]);
 
   useEffect(() => {
-    if (!schoolId || !quizId || !studentId) {
+    if (!schoolId || !quizId) {
       setLoading(false);
       return;
     }
     loadQuiz();
-  }, [schoolId, quizId, studentId, loadQuiz]);
+  }, [schoolId, quizId, loadQuiz]);
 
   // Timer
   useEffect(() => {
@@ -91,7 +100,7 @@ export default function TakeQuizPage() {
   };
 
   const handleSubmit = async () => {
-    if (!quiz || !schoolId || !quizId) return;
+    if (!quiz || !schoolId || !quizId || !studentId) return;
     setSubmitting(true);
     try {
       const payload = {
@@ -136,7 +145,7 @@ export default function TakeQuizPage() {
   }
 
   if (!started) {
-    return <QuizIntro quiz={quiz} onStart={handleStart} />;
+    return <QuizIntro quiz={quiz} onStart={handleStart} isPreview={isPreview} />;
   }
 
   const questions = quiz.questions || [];
@@ -149,6 +158,15 @@ export default function TakeQuizPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Preview banner */}
+      {isPreview && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm">
+          <Eye className="w-4 h-4" />
+          <span className="font-medium">Preview Mode</span>
+          <span className="text-xs opacity-80">You are viewing this quiz as a teacher. Correct answers are shown.</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -158,12 +176,14 @@ export default function TakeQuizPage() {
           <h1 className="text-xl font-bold">{quiz.title}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant={timeLeft !== null && timeLeft < 60 ? 'error' : 'warning'} className="text-sm px-3 py-1">
-            <Clock className="w-4 h-4 mr-1" />
-            {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
-          </Badge>
+          {!isPreview && (
+            <Badge variant={timeLeft !== null && timeLeft < 60 ? 'error' : 'warning'} className="text-sm px-3 py-1">
+              <Clock className="w-4 h-4 mr-1" />
+              {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
+            </Badge>
+          )}
           <span className="text-sm text-slate-500">
-            {answeredCount}/{questions.length} answered
+            Q{currentIndex + 1} of {questions.length}
           </span>
         </div>
       </div>
@@ -184,7 +204,16 @@ export default function TakeQuizPage() {
                 <Badge variant="default" className="text-[10px]">{q.questionType.replace('_', ' ')}</Badge>
               </div>
               <h2 className="text-lg font-medium">{q.questionText}</h2>
-              <QuestionInput question={q} value={answers[q.id || '']} onChange={(val) => setAnswer(q.id || '', val)} onToggle={(val) => toggleCheckbox(q.id || '', val)} />
+              <QuestionInput question={q} value={answers[q.id || '']} onChange={(val) => setAnswer(q.id || '', val)} onToggle={(val) => toggleCheckbox(q.id || '', val)} isPreview={isPreview} />
+              {/* Preview: show correct answer */}
+              {isPreview && (
+                <div className="mt-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs">
+                  <span className="font-medium">Correct answer: </span>
+                  {q.questionType === 'CHECKBOX'
+                    ? (q.correctAnswers || []).join(', ') || 'Not set'
+                    : (q.correctAnswer || 'Not set')}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -196,30 +225,30 @@ export default function TakeQuizPage() {
           <ChevronLeft className="w-4 h-4 mr-1" /> Prev
         </Button>
         <div className="flex gap-1 flex-wrap">
-          {questions.map((qq, idx) => {
-            const a = answers[qq.id || ''];
-            const isAnswered = qq.questionType === 'CHECKBOX' ? Array.isArray(a) && a.length > 0 : a !== undefined && a !== '';
-            return (
-              <button
-                key={qq.id || idx}
-                onClick={() => setCurrentIndex(idx)}
-                className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
-                  idx === currentIndex
-                    ? 'bg-primary-500 text-white'
-                    : isAnswered
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                {idx + 1}
-              </button>
-            );
-          })}
+          {questions.map((qq, idx) => (
+            <button
+              key={qq.id || idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                idx === currentIndex
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              {idx + 1}
+            </button>
+          ))}
         </div>
         {currentIndex < questions.length - 1 ? (
           <Button size="sm" onClick={() => setCurrentIndex((i) => i + 1)}>
             Next <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
+        ) : isPreview ? (
+          <Link href="/quizzes">
+            <Button size="sm" variant="secondary">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+          </Link>
         ) : (
           <Button size="sm" onClick={handleSubmit} isLoading={submitting}>
             <CheckCircle className="w-4 h-4 mr-1" /> Submit
@@ -230,11 +259,12 @@ export default function TakeQuizPage() {
   );
 }
 
-function QuestionInput({ question, value, onChange, onToggle }: {
+function QuestionInput({ question, value, onChange, onToggle, isPreview }: {
   question: QuizQuestion;
   value: any;
   onChange: (v: any) => void;
   onToggle: (v: string) => void;
+  isPreview?: boolean;
 }) {
   const opts = question.options || [];
   const normalizedOpts = opts.map((o: any) => (typeof o === 'string' ? { label: o, value: o } : o));
@@ -306,7 +336,7 @@ function QuestionInput({ question, value, onChange, onToggle }: {
   }
 }
 
-function QuizIntro({ quiz, onStart }: { quiz: Quiz; onStart: () => void }) {
+function QuizIntro({ quiz, onStart, isPreview }: { quiz: Quiz; onStart: () => void; isPreview?: boolean }) {
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <Card>
@@ -341,9 +371,15 @@ function QuizIntro({ quiz, onStart }: { quiz: Quiz; onStart: () => void }) {
               Expires on {new Date(quiz.endTime).toLocaleString()}
             </p>
           )}
-          <Button onClick={onStart} className="w-full">
-            <Play className="w-4 h-4 mr-2" /> Start Quiz
-          </Button>
+          {isPreview ? (
+            <Button onClick={onStart} className="w-full">
+              <Eye className="w-4 h-4 mr-2" /> Preview Quiz
+            </Button>
+          ) : (
+            <Button onClick={onStart} className="w-full">
+              <Play className="w-4 h-4 mr-2" /> Start Quiz
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
