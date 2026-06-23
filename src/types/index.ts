@@ -390,6 +390,8 @@ export interface Quiz {
   shuffleQuestions?: boolean;
   showResultsImmediately?: boolean;
   showCorrectAnswers?: boolean;
+  resultVisibilityType?: 'IMMEDIATELY' | 'AFTER_ALL_SUBMITTED' | 'AFTER_DEADLINE' | 'MANUAL' | 'NEVER';
+  resultsReleased?: boolean;
   maxAttempts?: number;
   startTime?: string;
   endTime?: string;
@@ -419,6 +421,7 @@ export interface QuizQuestion {
   explanation?: string;
   correctAnswer?: string;
   correctAnswers?: string[];
+  required?: boolean;
 }
 
 export interface QuizSubmission {
@@ -448,6 +451,31 @@ export interface QuizAnswer {
   explanation?: string;
 }
 
+export interface QuizParticipant {
+  studentId: string;
+  studentName: string;
+  admissionNumber?: string;
+  className?: string;
+  attemptCount: number;
+  bestScore?: number;
+  bestPercentage?: number;
+  bestGradeLetter?: string;
+  passed: boolean;
+  attempts: QuizAttemptInfo[];
+}
+
+export interface QuizAttemptInfo {
+  submissionId: string;
+  attemptNumber: number;
+  score?: number;
+  totalMarks?: number;
+  percentage?: number;
+  gradeLetter?: string;
+  status: string;
+  startedAt?: string;
+  submittedAt?: string;
+}
+
 export interface QuizResult {
   submissionId: string;
   quizId: string;
@@ -458,5 +486,7 @@ export interface QuizResult {
   gradeLetter?: string;
   status: string;
   showCorrectAnswers?: boolean;
+  resultsVisible?: boolean;
+  resultsAvailableText?: string;
   answers?: QuizAnswer[];
 }

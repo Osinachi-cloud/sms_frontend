@@ -9,6 +9,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  subtitle?: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'large';
 }
@@ -21,7 +22,7 @@ const sizeClasses = {
   xl: 'max-w-4xl',
 };
 
-export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, subtitle, children, size = 'md' }: ModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -61,8 +62,11 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
               )}
             >
               {title && (
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                  <h2 className="text-xl font-semibold">{title}</h2>
+                <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div>
+                    <h2 className="text-xl font-bold">{title}</h2>
+                    {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+                  </div>
                   <button
                     onClick={onClose}
                     className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

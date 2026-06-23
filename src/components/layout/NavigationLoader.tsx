@@ -18,12 +18,11 @@ export function NavigationLoader() {
 
   useEffect(() => {
     if (!isLoading) return;
-    // Hide the loader after a short grace period so the destination page
-    // has time to mount and show its own skeleton/loading state.
-    const timer = setTimeout(() => {
+    // Hide loader immediately after the next frame so navigation feels instant.
+    const raf = requestAnimationFrame(() => {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [isLoading]);
 
   return (

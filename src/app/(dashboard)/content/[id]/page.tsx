@@ -13,7 +13,7 @@ import { Loader2, FileText, Video, File, Link as LinkIcon, Calendar, User, BookO
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
 
 function resolveUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;

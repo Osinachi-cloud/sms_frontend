@@ -1,32 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { quizApi, subjectApi, classApi, termApi, academicSessionApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { QuizQuestion } from '@/types';
+import { Quiz, QuizQuestion } from '@/types';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Trash2,
   ArrowLeft,
-  Clock,
-  BookOpen,
-  GraduationCap,
-  Calendar,
   CheckSquare,
   GripVertical,
   Save,
+  Loader2,
   Layers,
   Sparkles,
+  BookOpen,
+  Clock,
+  GraduationCap,
   Hash,
-  ToggleLeft,
-  ToggleRight,
+  Pencil,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -40,16 +39,27 @@ const QUESTION_TYPES: { type: QuizQuestion['questionType']; label: string; icon:
   { type: 'PARAGRAPH', label: 'Paragraph', icon: '¶' },
 ];
 
-export default function CreateQuizPage() {
+function toLocalInputValue(iso?: string) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export default function EditQuizPage() {
+  const params = useParams();
   const router = useRouter();
   const { currentSchool } = useAuth();
   const schoolId = currentSchool?.id;
+  const quizId = params?.id as string;
 
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     title: '',
@@ -82,13 +92,42 @@ export default function CreateQuizPage() {
       classApi.getAll(schoolId, { size: 100 }),
       termApi.getAll(schoolId, { size: 100 }),
       academicSessionApi.getAll(schoolId, { size: 100 }),
-    ]).then(([subRes, clsRes, termRes, sessRes]) => {
+      quizApi.getOne(schoolId, quizId),
+    ]).then(([subRes, clsRes, termRes, sessRes, quizRes]) => {
       setSubjects((subRes.data as any)?.content || []);
       setClasses((clsRes.data as any)?.content || []);
       setTerms((termRes.data as any)?.content || []);
       setSessions((sessRes.data as any)?.content || []);
-    }).catch(() => toast.error('Failed to load lookup data'));
-  }, [schoolId]);
+
+      const q: Quiz = quizRes.data;
+      setForm({
+        title: q.title || '',
+        description: q.description || '',
+        quizType: q.quizType || 'QUIZ',
+        subjectId: q.subjectId || '',
+        targetClassIds: q.targetClassIds || [],
+        termId: q.termId || '',
+        sessionId: q.sessionId || '',
+        durationMinutes: q.durationMinutes || 30,
+        totalMarks: q.totalMarks || 100,
+        passMark: q.passMark || 40,
+        maxAttempts: q.maxAttempts || 1,
+        startTime: toLocalInputValue(q.startTime),
+        endTime: toLocalInputValue(q.endTime),
+        shuffleQuestions: Boolean(q.shuffleQuestions),
+        showResultsImmediately: q.showResultsImmediately !== false,
+        showCorrectAnswers: Boolean(q.showCorrectAnswers),
+        resultVisibilityType: (q.resultVisibilityType as any) || 'NEVER',
+        resultsReleased: Boolean(q.resultsReleased),
+        isEnabled: q.isEnabled !== false,
+      });
+      setQuestions((q.questions || []).map((qq, i) => ({ ...qq, orderIndex: i })));
+    }).catch(() => {
+      toast.error('Failed to load quiz data');
+    }).finally(() => {
+      setPageLoading(false);
+    });
+  }, [schoolId, quizId]);
 
   const addQuestion = (type: QuizQuestion['questionType']) => {
     const q: QuizQuestion = {
@@ -145,11 +184,11 @@ export default function CreateQuizPage() {
   };
 
   const handleSave = async () => {
-    if (!schoolId) return;
+    if (!schoolId || !quizId) return;
     if (!form.title.trim()) { toast.error('Title is required'); return; }
     if (questions.length === 0) { toast.error('Add at least one question'); return; }
 
-    setLoading(true);
+    setSaving(true);
     try {
       const payload = {
         ...form,
@@ -163,17 +202,28 @@ export default function CreateQuizPage() {
           options: q.options?.map((o: any) => (typeof o === 'string' ? { label: o, value: o } : o)),
         })),
       };
-      await quizApi.create(schoolId, payload);
-      toast.success('Quiz created successfully');
+      await quizApi.update(schoolId, quizId, payload);
+      toast.success('Quiz updated successfully');
       router.push('/quizzes');
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create quiz');
+      toast.error(err?.response?.data?.message || 'Failed to update quiz');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const totalQuestionMarks = questions.reduce((s, q) => s + (q.marks || 0), 0);
+
+  if (pageLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-primary-500 mx-auto mb-3" />
+          <p className="text-sm text-slate-500">Loading quiz...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -184,14 +234,14 @@ export default function CreateQuizPage() {
             <ArrowLeft className="w-3 h-3" /> Back to quizzes
           </Link>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-500/20">
+              <Pencil className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Create Assessment</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Edit Assessment</h1>
           </div>
         </div>
-        <Button onClick={handleSave} isLoading={loading} className="shadow-lg shadow-primary-500/20">
-          <Save className="w-4 h-4 mr-2" /> Save Assessment
+        <Button onClick={handleSave} isLoading={saving} className="shadow-lg shadow-primary-500/20">
+          <Save className="w-4 h-4 mr-2" /> Save Changes
         </Button>
       </div>
 

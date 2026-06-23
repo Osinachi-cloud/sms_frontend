@@ -1,12 +1,12 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { AuthResponse } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
 
 // Render free tier needs up to 60s to cold-start. Local dev stays snappy.
 const isProduction = typeof window !== 'undefined'
   ? !window.location.hostname.includes('localhost')
-  : API_BASE_URL !== 'http://localhost:8080';
+  : API_BASE_URL !== 'http://localhost:8081';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -434,10 +434,14 @@ export const quizApi = {
     api.post(`/api/schools/${schoolId}/quizzes/${quizId}/submit`, data),
   getSubmissions: (schoolId: string, quizId: string) =>
     api.get(`/api/schools/${schoolId}/quizzes/${quizId}/submissions`),
+  getParticipants: (schoolId: string, quizId: string, params?: { search?: string; status?: string; minScore?: number; maxScore?: number }) =>
+    api.get(`/api/schools/${schoolId}/quizzes/${quizId}/participants`, { params }),
   getStudentHistory: (schoolId: string, studentId: string) =>
     api.get(`/api/schools/${schoolId}/quizzes/student/${studentId}/history`),
   toggleEnabled: (schoolId: string, quizId: string) =>
     api.post(`/api/schools/${schoolId}/quizzes/${quizId}/toggle`),
+  releaseResults: (schoolId: string, quizId: string) =>
+    api.post(`/api/schools/${schoolId}/quizzes/${quizId}/release-results`),
   addToGrades: (schoolId: string, quizId: string) =>
     api.post(`/api/schools/${schoolId}/quizzes/${quizId}/add-to-grades`),
 };

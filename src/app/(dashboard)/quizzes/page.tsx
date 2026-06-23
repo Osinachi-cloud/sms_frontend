@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { Quiz } from '@/types';
+import { Quiz, QuizParticipant } from '@/types';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Clock,
@@ -30,6 +30,15 @@ import {
   FileDown,
   FileSpreadsheet,
   Trash2,
+  Pencil,
+  Users,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Layers,
+  TrendingUp,
+  Flame,
 } from 'lucide-react';
 
 import * as XLSX from 'xlsx';
@@ -127,6 +136,23 @@ export default function QuizzesPage() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Delete modal state
+  const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Participants modal state
+  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [selectedQuizTitle, setSelectedQuizTitle] = useState('');
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [participants, setParticipants] = useState<QuizParticipant[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [participantStatus, setParticipantStatus] = useState<'ALL' | 'PASSED' | 'FAILED'>('ALL');
+  const [participantMinScore, setParticipantMinScore] = useState('');
+  const [participantMaxScore, setParticipantMaxScore] = useState('');
+  const [expandedParticipants, setExpandedParticipants] = useState<Set<string>>(new Set());
+
   const isAdmin = isPlatformAdmin() || currentSchool?.roleName === 'ADMIN' || currentSchool?.roleName === 'SUPER_ADMIN';
   const canManage = isAdmin || isTeacher() || hasPermission('cms.content.create');
 
@@ -176,6 +202,83 @@ export default function QuizzesPage() {
     acc[key].push(q);
     return acc;
   }, {} as Record<string, Quiz[]>);
+
+  // ---- Delete handlers ----
+  const confirmDelete = (quiz: Quiz) => {
+    setQuizToDelete(quiz);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteQuiz = async () => {
+    if (!schoolId || !quizToDelete) return;
+    setDeleting(true);
+    try {
+      await quizApi.delete(schoolId, quizToDelete.id);
+      toast.success('Quiz deleted successfully');
+      setShowDeleteConfirm(false);
+      setQuizToDelete(null);
+      loadQuizzes();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete quiz');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ---- Participants handlers ----
+  const openParticipants = async (quizId: string, title: string) => {
+    if (!schoolId) return;
+    setSelectedQuizId(quizId);
+    setSelectedQuizTitle(title);
+    setShowParticipants(true);
+    setParticipantsLoading(true);
+    setParticipantSearch('');
+    setParticipantStatus('ALL');
+    setParticipantMinScore('');
+    setParticipantMaxScore('');
+    setExpandedParticipants(new Set());
+    try {
+      const res = await quizApi.getParticipants(schoolId, quizId);
+      setParticipants(res.data || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to load participants');
+      setParticipants([]);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
+
+  const closeParticipants = () => {
+    setShowParticipants(false);
+    setSelectedQuizId(null);
+    setSelectedQuizTitle('');
+    setParticipants([]);
+  };
+
+  const toggleExpandParticipant = (studentId: string) => {
+    setExpandedParticipants((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+  };
+
+  const filteredParticipants = participants.filter((p) => {
+    const text = `${p.studentName} ${p.admissionNumber || ''} ${p.className || ''}`.toLowerCase();
+    if (!text.includes(participantSearch.toLowerCase())) return false;
+    if (participantStatus === 'PASSED' && !p.passed) return false;
+    if (participantStatus === 'FAILED' && p.passed) return false;
+    if (participantMinScore) {
+      const min = parseFloat(participantMinScore);
+      if (!isNaN(min) && (p.bestScore === undefined || p.bestScore < min)) return false;
+    }
+    if (participantMaxScore) {
+      const max = parseFloat(participantMaxScore);
+      if (!isNaN(max) && (p.bestScore === undefined || p.bestScore > max)) return false;
+    }
+    return true;
+  });
 
   // ---- Import handlers ----
 
@@ -332,21 +435,33 @@ export default function QuizzesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Exams, Tests & Quizzes</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Organized assessments by subject and class</p>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+              <Layers className="w-4 h-4 text-white" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+              Assessments
+            </h1>
+          </div>
+          <p className="text-slate-500 dark:text-slate-400 text-sm ml-10">Manage exams, tests, and quizzes across subjects</p>
         </div>
         {canManage && (
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => { setShowImport(true); setImportFile(null); setImportPreview([]); }}>
-              <Upload className="w-4 h-4 mr-1" /> Import
+          <div className="flex items-center gap-2 ml-10 sm:ml-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setShowImport(true); setImportFile(null); setImportPreview([]); }}
+              className="border-slate-200 dark:border-slate-700 hover:border-primary-300"
+            >
+              <Upload className="w-4 h-4 mr-1.5" /> Import
             </Button>
             <Link href="/quizzes/create">
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-1" /> Create Assessment
+              <Button size="sm" className="shadow-lg shadow-primary-500/20">
+                <Plus className="w-4 h-4 mr-1.5" /> Create assessment
               </Button>
             </Link>
           </div>
@@ -355,25 +470,27 @@ export default function QuizzesPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="relative flex-1 group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
           <input
             type="text"
-            placeholder="Search by title, subject, class..."
+            placeholder="Search assessments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="glass-input pl-9 w-full text-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm
+              focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
+              transition-all placeholder:text-slate-400"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
           {(['ALL', 'EXAM', 'TEST', 'QUIZ'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
                 filterType === t
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               {t === 'ALL' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
@@ -384,31 +501,57 @@ export default function QuizzesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 glass-card rounded-xl animate-pulse" />
+        <div className="space-y-6">
+          {[1, 2].map((group) => (
+            <div key={group} className="space-y-3">
+              <div className="h-6 w-32 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-52 bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
-          <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>No assessments found</p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-20"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mx-auto mb-5">
+            <Sparkles className="w-10 h-10 text-slate-300" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">No assessments found</h3>
+          <p className="text-sm text-slate-400 mb-5">Get started by creating your first quiz or exam</p>
           {canManage && (
             <Link href="/quizzes/create">
-              <Button variant="secondary" size="sm" className="mt-3">Create your first assessment</Button>
+              <Button size="sm" className="shadow-lg shadow-primary-500/20">
+                <Plus className="w-4 h-4 mr-1.5" /> Create assessment
+              </Button>
             </Link>
           )}
-        </div>
+        </motion.div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {Object.entries(grouped).map(([subjectName, subjectQuizzes]) => (
-            <div key={subjectName}>
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-4 h-4 text-primary-500" />
-                <h2 className="text-lg font-semibold">{subjectName}</h2>
-                <Badge variant="default" className="text-[10px]">{subjectQuizzes.length}</Badge>
+            <motion.div
+              key={subjectName}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
+                  <BookOpen className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">{subjectName}</h2>
+                <Badge variant="default" className="text-[10px] px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-0">
+                  {subjectQuizzes.length}
+                </Badge>
+                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800 ml-2" />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {subjectQuizzes.map((quiz, i) => (
                   <QuizCard
                     key={quiz.id}
@@ -418,87 +561,86 @@ export default function QuizzesPage() {
                     canManage={canManage}
                     isExpired={isExpired(quiz)}
                     isNotStarted={isNotStarted(quiz)}
+                    onDelete={confirmDelete}
+                    onViewParticipants={openParticipants}
                   />
                 ))}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
 
       {/* Import Modal */}
-      <Modal isOpen={showImport} onClose={() => { setShowImport(false); setImportFile(null); setImportPreview([]); }} title="Import Quiz from File" size="lg">
-        <div className="space-y-4 max-h-[70vh] overflow-auto pr-2">
-          {/* Templates */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-3">
-            <p className="text-sm font-medium">Download Template</p>
-            <p className="text-xs text-slate-500">
-              Download a blank template, fill it with your quiz data, then upload below.
-              Supports all question types: MCQ, CHECKBOX, SHORT_ANSWER, PARAGRAPH, TRUE_FALSE, FILL_BLANK.
+      <Modal isOpen={showImport} onClose={() => { setShowImport(false); setImportFile(null); setImportPreview([]); }} title="Import Quiz" size="xl">
+        <div className="space-y-5 max-h-[75vh] overflow-auto pr-2">
+          <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/10 dark:to-violet-900/10 rounded-2xl p-5 space-y-3 border border-indigo-100 dark:border-indigo-900/20">
+            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-300">Download Template</p>
+            <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70">
+              Download a template, fill with your quiz data, then upload. Supports MCQ, CHECKBOX, SHORT_ANSWER, PARAGRAPH, TRUE_FALSE, FILL_BLANK.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
-                <FileDown className="w-4 h-4 mr-2" /> CSV Template
+              <Button variant="outline" size="sm" onClick={downloadCsvTemplate} className="bg-white dark:bg-slate-800">
+                <FileDown className="w-4 h-4 mr-2" /> CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={downloadExcelTemplate}>
-                <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel Template
+              <Button variant="outline" size="sm" onClick={downloadExcelTemplate} className="bg-white dark:bg-slate-800">
+                <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel
               </Button>
             </div>
           </div>
 
-          {/* Upload area */}
-          <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center space-y-3">
-            <Upload className="w-8 h-8 text-slate-400 mx-auto" />
-            <p className="text-sm font-medium">Upload your filled template</p>
-            <p className="text-xs text-slate-500">Supported formats: .csv, .xlsx</p>
+          <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 rounded-2xl p-8 text-center space-y-3 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}>
+            <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mx-auto">
+              <Upload className="w-7 h-7 text-slate-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload</p>
+              <p className="text-xs text-slate-400 mt-0.5">CSV, XLSX up to 10MB</p>
+            </div>
             <input
               type="file"
               accept=".csv,.xlsx,.xls"
               ref={fileInputRef}
               onChange={handleFileSelect}
               className="hidden"
-              id="quiz-import-file"
             />
-            <label htmlFor="quiz-import-file">
-              <Button variant="secondary" size="sm" className="cursor-pointer" as="span">
-                Select File
-              </Button>
-            </label>
             {importFile && (
               <div className="flex items-center justify-center gap-2 mt-2">
-                <p className="text-xs text-slate-600">{importFile.name}</p>
-                <button onClick={() => { setImportFile(null); setImportPreview([]); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
-                  <Trash2 className="w-3 h-3 text-red-400" />
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{importFile.name}</p>
+                <button onClick={(e) => { e.stopPropagation(); setImportFile(null); setImportPreview([]); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
+                  <XCircle className="w-4 h-4 text-red-400" />
                 </button>
               </div>
             )}
           </div>
 
-          {/* Preview */}
           {importPreview.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Preview ({importPreview.length} questions)</p>
-              <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">Preview ({importPreview.length} questions)</p>
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
-                    <tr>
-                      <th className="text-left p-2">#</th>
-                      <th className="text-left p-2">Question</th>
-                      <th className="text-left p-2">Type</th>
-                      <th className="text-left p-2">Answer(s)</th>
-                      <th className="text-left p-2">Marks</th>
+                  <thead className="bg-slate-50 dark:bg-slate-800">
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left p-3 font-semibold text-slate-600 dark:text-slate-400">#</th>
+                      <th className="text-left p-3 font-semibold text-slate-600 dark:text-slate-400">Question</th>
+                      <th className="text-left p-3 font-semibold text-slate-600 dark:text-slate-400">Type</th>
+                      <th className="text-left p-3 font-semibold text-slate-600 dark:text-slate-400">Answer(s)</th>
+                      <th className="text-left p-3 font-semibold text-slate-600 dark:text-slate-400">Marks</th>
                     </tr>
                   </thead>
                   <tbody>
                     {importPreview.map((q, i) => (
-                      <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
-                        <td className="p-2">{i + 1}</td>
-                        <td className="p-2 max-w-[200px] truncate">{q.question_text}</td>
-                        <td className="p-2">{q.question_type}</td>
-                        <td className="p-2 max-w-[150px] truncate">
+                      <tr key={i} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="p-3 text-slate-500">{i + 1}</td>
+                        <td className="p-3 max-w-[220px] truncate text-slate-700 dark:text-slate-300">{q.question_text}</td>
+                        <td className="p-3">
+                          <Badge variant="default" className="text-[10px] border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">{q.question_type}</Badge>
+                        </td>
+                        <td className="p-3 max-w-[160px] truncate text-slate-500">
                           {q.correct_answers || q.correct_answer || '—'}
                         </td>
-                        <td className="p-2">{q.marks}</td>
+                        <td className="p-3 font-medium text-slate-700 dark:text-slate-300">{q.marks}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -508,13 +650,218 @@ export default function QuizzesPage() {
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => { setShowImport(false); setImportFile(null); setImportPreview([]); }}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setShowImport(false); setImportFile(null); setImportPreview([]); }}>
               Cancel
             </Button>
-            <Button onClick={submitImportedQuiz} isLoading={isImporting} disabled={importPreview.length === 0}>
+            <Button onClick={submitImportedQuiz} isLoading={isImporting} disabled={importPreview.length === 0} size="sm">
               Import Quiz
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setQuizToDelete(null); }} title="Delete Quiz" size="sm">
+        <div className="space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+              <Trash2 className="w-6 h-6 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Delete assessment?</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                <span className="font-medium text-slate-700 dark:text-slate-300">{quizToDelete?.title}</span> will be permanently removed.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { setShowDeleteConfirm(false); setQuizToDelete(null); }}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" isLoading={deleting} onClick={handleDeleteQuiz}>
+              <Trash2 className="w-4 h-4 mr-1.5" /> Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Participants Modal */}
+      <Modal isOpen={showParticipants} onClose={closeParticipants} title={`Participants`} subtitle={selectedQuizTitle} size="xl">
+        <div className="space-y-5 max-h-[75vh] overflow-auto pr-2">
+          {/* Participant filters */}
+          <div className="bg-slate-50 dark:bg-slate-800/30 rounded-xl p-4 space-y-3 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <Filter className="w-4 h-4 text-slate-400" />
+              Filters
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search name, admission #..."
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs
+                    focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
+                />
+              </div>
+              <select
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
+                value={participantStatus}
+                onChange={(e) => setParticipantStatus(e.target.value as any)}
+              >
+                <option value="ALL">All Results</option>
+                <option value="PASSED">Passed Only</option>
+                <option value="FAILED">Failed Only</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Min score"
+                value={participantMinScore}
+                onChange={(e) => setParticipantMinScore(e.target.value)}
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
+              />
+              <input
+                type="number"
+                placeholder="Max score"
+                value={participantMaxScore}
+                onChange={(e) => setParticipantMaxScore(e.target.value)}
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
+              />
+            </div>
+            <div className="text-xs text-slate-500">
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-300">{filteredParticipants.length}</span> of {participants.length} participant{participants.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          {participantsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/30 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : filteredParticipants.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800/30 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No participants found</p>
+              <p className="text-xs text-slate-400 mt-1">Try adjusting your filters</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredParticipants.map((p, i) => {
+                const isExpanded = expandedParticipants.has(p.studentId);
+                const bestAttempt = p.attempts.reduce((best, a) => (a.score || 0) > (best?.score || 0) ? a : best, p.attempts[0]);
+                return (
+                  <motion.div
+                    key={p.studentId}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.02 }}
+                    className="rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden bg-white dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                  >
+                    <button
+                      onClick={() => toggleExpandParticipant(p.studentId)}
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300">
+                          {p.studentName?.charAt(0).toUpperCase() || 'S'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-slate eight dark:text-slate-200">{p.studentName}</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {p.admissionNumber || 'No admission #'} • {p.attemptCount} attempt{p.attemptCount !== 1 ? 's' : ''}
+                            {p.className && ` • ${p.className}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                            {p.bestScore !== undefined ? `${p.bestScore}/${bestAttempt?.totalMarks ?? '-'}` : '-'}
+                          </p>
+                          <Badge
+                            variant={p.passed ? 'success' : 'error'}
+                            className="text-[10px] border-0 mt-0.5"
+                          >
+                            {p.bestPercentage?.toFixed(1)}% — {p.bestGradeLetter || '-'}
+                          </Badge>
+                        </div>
+                        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">All Attempts</p>
+                            <div className="space-y-2">
+                              {p.attempts.map((attempt) => {
+                                const isBest = attempt.score === Math.max(...p.attempts.map((x) => x.score || 0));
+                                return (
+                                  <div
+                                    key={attempt.submissionId}
+                                    className={`flex items-center justify-between p-3 rounded-xl text-sm ${
+                                      isBest
+                                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30'
+                                        : 'bg-slate-50 dark:bg-slate-800/20'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="text-xs font-bold text-slate-400 w-5">#{attempt.attemptNumber}</span>
+                                      {isBest && (
+                                        <Badge variant="success" className="text-[9px] px-1.5 py-0 border-0">
+                                          <Flame className="w-2.5 h-2.5 mr-0.5" /> BEST
+                                        </Badge>
+                                      )}
+                                      {attempt.status === 'TIMED_OUT' && (
+                                        <Badge variant="warning" className="text-[9px] px-1.5 py-0 border-0">TIMED OUT</Badge>
+                                      )}
+                                      <span className="text-xs text-slate-500 flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString() : '—'}
+                                      </span>
+                                      {attempt.startedAt && attempt.submittedAt && (
+                                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                                          <Clock className="w-3 h-3" />
+                                          {Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)} min
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="font-bold text-slate-700 dark:text-slate-300">
+                                        {attempt.score !== undefined ? `${attempt.score}/${attempt.totalMarks ?? '-'}` : '-'}
+                                      </span>
+                                      <span className="text-xs text-slate-500 ml-2">
+                                        ({attempt.percentage?.toFixed(1) ?? '-'}%)
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Modal>
     </div>
@@ -528,6 +875,8 @@ function QuizCard({
   canManage,
   isExpired,
   isNotStarted,
+  onDelete,
+  onViewParticipants,
 }: {
   quiz: Quiz;
   index: number;
@@ -535,86 +884,155 @@ function QuizCard({
   canManage: boolean;
   isExpired: boolean;
   isNotStarted: boolean;
+  onDelete: (quiz: Quiz) => void;
+  onViewParticipants: (quizId: string, title: string) => void;
 }) {
   const disabled = quiz.isEnabled === false || isExpired;
   const attempted = quiz.hasAttempted;
   const attemptsRemaining = (quiz.maxAttempts || 1) - (quiz.attemptsUsed || 0);
 
+  const typeColors: Record<string, { bg: string; text: string; border: string; icon: any }> = {
+    EXAM: { bg: 'bg-rose-50 dark:bg-rose-900/10', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/30', icon: Trophy },
+    TEST: { bg: 'bg-amber-50 dark:bg-amber-900/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/30', icon: TrendingUp },
+    QUIZ: { bg: 'bg-emerald-50 dark:bg-emerald-900/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/30', icon: CheckCircle },
+  };
+
+  const tc = typeColors[quiz.quizType || 'QUIZ'];
+  const TypeIcon = tc.icon;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className={`glass-card rounded-2xl p-4 sm:p-5 ${disabled ? 'opacity-60' : ''}`}
+      transition={{ delay: index * 0.08, duration: 0.4 }}
+      className={`group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/50
+        hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/20
+        transition-all duration-300 overflow-hidden ${disabled ? 'opacity-55' : ''}`}
     >
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-sm truncate">{quiz.title}</h3>
+      {/* Top accent bar */}
+      <div className={`h-1 w-full ${tc.bg.replace('bg-', 'bg-gradient-to-r from-').replace('50', '400').replace('/10', '')} to-transparent`} />
+
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-7 h-7 rounded-lg ${tc.bg} ${tc.text} flex items-center justify-center flex-shrink-0 border ${tc.border}`}>
+              <TypeIcon className="w-3.5 h-3.5" />
+            </div>
+            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{quiz.title}</h3>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {attempted && (
+              <Badge variant="success" className="text-[10px] border-0 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+                {quiz.bestScore}/{quiz.totalMarks}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 leading-relaxed">{quiz.description || 'No description provided'}</p>
+
+        {/* Meta */}
+        <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 mb-4 flex-wrap">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+            <Clock className="w-3 h-3 text-slate-400" /> {quiz.durationMinutes} min
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+            <BarChart3 className="w-3 h-3 text-slate-400" /> {quiz.questionCount} Qs
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+            <Trophy className="w-3 h-3 text-slate-400" /> {quiz.totalMarks} marks
+          </span>
+          {quiz.className && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <GraduationCap className="w-3 h-3 text-slate-400" /> {quiz.className}
+            </span>
+          )}
+        </div>
+
+        {/* Status badges */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          <Badge className={`text-[10px] border-0 px-2 py-0.5 ${tc.bg} ${tc.text}`}>
+            {quiz.quizType || 'Quiz'}
+          </Badge>
+          {disabled && (
+            <Badge variant="error" className="text-[10px] border-0 px-2 py-0.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400">
+              <Lock className="w-2.5 h-2.5 mr-0.5" /> {isExpired ? 'Expired' : 'Disabled'}
+            </Badge>
+          )}
+          {isNotStarted && (
+            <Badge variant="warning" className="text-[10px] border-0 px-2 py-0.5 bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400">
+              <Calendar className="w-2.5 h-2.5 mr-0.5" /> Upcoming
+            </Badge>
+          )}
           {attempted && (
-            <Badge variant="success" className="text-[10px]">
-              {quiz.bestScore}/{quiz.totalMarks}
+            <Badge variant="info" className="text-[10px] border-0 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400">
+              <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Attempted
             </Badge>
           )}
         </div>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-          quiz.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
-        }`}>
-          {quiz.status}
-        </span>
-      </div>
 
-      <p className="text-xs text-slate-500 mb-3 line-clamp-2">{quiz.description || 'No description'}</p>
-
-      <div className="flex items-center gap-3 text-xs text-slate-500 mb-3 flex-wrap">
-        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {quiz.durationMinutes} min</span>
-        <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" /> {quiz.questionCount} Qs</span>
-        <span>{quiz.totalMarks} marks</span>
-        {quiz.className && <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {quiz.className}</span>}
-      </div>
-
-      <div className="flex flex-wrap gap-1 mb-3">
-        <Badge variant="default" className="text-[10px]">{quiz.quizType || 'Quiz'}</Badge>
-        {disabled && <Badge variant="error" className="text-[10px]"><Lock className="w-3 h-3 mr-0.5" /> {isExpired ? 'Expired' : 'Disabled'}</Badge>}
-        {isNotStarted && <Badge variant="warning" className="text-[10px]"><Calendar className="w-3 h-3 mr-0.5" /> Upcoming</Badge>}
-        {attempted && <Badge variant="info" className="text-[10px]"><CheckCircle className="w-3 h-3 mr-0.5" /> Attempted</Badge>}
-      </div>
-
-      {isStudent ? (
-        <div className="flex gap-2">
-          {attempted && (
-            <div className="flex-1 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-center">
-              <Trophy className="w-4 h-4 text-green-600 mx-auto mb-0.5" />
-              <p className="text-xs font-medium text-green-700">{quiz.bestScore}/{quiz.totalMarks}</p>
-            </div>
-          )}
-          {!disabled && !isNotStarted && attemptsRemaining > 0 ? (
-            <Link href={`/quizzes/${quiz.id}/take`} className="flex-1">
-              <Button size="sm" className="w-full">
-                <Play className="w-3 h-3 mr-1" /> {attempted ? 'Retake' : 'Take'}
+        {/* Actions */}
+        {isStudent ? (
+          <div className="flex gap-2">
+            {attempted && (
+              <div className="flex-1 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/20 text-center">
+                <Trophy className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">{quiz.bestScore}/{quiz.totalMarks}</p>
+              </div>
+            )}
+            {!disabled && !isNotStarted && attemptsRemaining > 0 ? (
+              <Link href={`/quizzes/${quiz.id}/take`} className="flex-1">
+                <Button size="sm" className="w-full shadow-md shadow-primary-500/15">
+                  <Play className="w-3.5 h-3.5 mr-1.5" /> {attempted ? 'Retake' : 'Start'}
+                </Button>
+              </Link>
+            ) : (
+              <Button size="sm" className="w-full" disabled>
+                <Lock className="w-3.5 h-3.5 mr-1.5" /> {isExpired ? 'Expired' : isNotStarted ? 'Not started' : 'No attempts left'}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2 flex-wrap">
+            {canManage && (
+              <>
+                <Link href={`/quizzes/${quiz.id}/edit`} className="flex-1 min-w-[50px]">
+                  <Button variant="ghost" size="sm" className="w-full text-slate-600 dark:text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10">
+                    <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 min-w-[70px] text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/10"
+                  onClick={() => onViewParticipants(quiz.id, quiz.title)}
+                >
+                  <Users className="w-3.5 h-3.5 mr-1.5" /> Participants
+                </Button>
+                <Link href={`/quizzes/${quiz.id}/results`} className="flex-1 min-w-[50px]">
+                  <Button variant="ghost" size="sm" className="w-full text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/10">
+                    <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Results
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="px-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
+                  onClick={() => onDelete(quiz)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+            <Link href={`/quizzes/${quiz.id}/take`} className="flex-1 min-w-[50px]">
+              <Button variant="ghost" size="sm" className="w-full text-slate-600 dark:text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10">
+                <Eye className="w-3.5 h-3.5 mr-1.5" /> Preview
               </Button>
             </Link>
-          ) : (
-            <Button size="sm" className="w-full" disabled>
-              <Lock className="w-3 h-3 mr-1" /> {isExpired ? 'Expired' : isNotStarted ? 'Not started' : 'No attempts left'}
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          {canManage && (
-            <Link href={`/quizzes/${quiz.id}/results`} className="flex-1">
-              <Button variant="secondary" size="sm" className="w-full">
-                <BarChart3 className="w-3 h-3 mr-1" /> Results
-              </Button>
-            </Link>
-          )}
-          <Link href={`/quizzes/${quiz.id}/take`} className="flex-1">
-            <Button variant="ghost" size="sm" className="w-full">
-              <Eye className="w-3 h-3 mr-1" /> Preview
-            </Button>
-          </Link>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
