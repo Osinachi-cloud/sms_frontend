@@ -240,6 +240,11 @@ export default function QuizResultsPage() {
                     quiz.resultVisibilityType === 'MANUAL' ? (quiz.resultsReleased ? 'Results: Released' : 'Results: Manual') :
                     'Results: Hidden'}
                 </Badge>
+                <Badge variant="default" className="text-[10px] border-0 bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400">
+                  {quiz.scoreAggregationStrategy === 'LOWEST' ? 'Score: Lowest' :
+                    quiz.scoreAggregationStrategy === 'AVERAGE' ? 'Score: Average' :
+                    'Score: Highest'}
+                </Badge>
               </div>
             </div>
           </div>
@@ -282,7 +287,7 @@ export default function QuizResultsPage() {
         <StatCard
           icon={<Trophy className="w-5 h-5 text-amber-500" />}
           value={`${avgBestScore}/${quiz.totalMarks}`}
-          label="Avg Best Score"
+          label={`Avg ${quiz?.scoreAggregationStrategy === 'LOWEST' ? 'Lowest' : quiz?.scoreAggregationStrategy === 'AVERAGE' ? 'Avg' : 'Best'} Score`}
           color="from-amber-400 to-orange-500"
         />
         <StatCard

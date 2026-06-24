@@ -71,6 +71,7 @@ export default function CreateQuizPage() {
     isEnabled: true,
     resultVisibilityType: 'NEVER' as 'IMMEDIATELY' | 'AFTER_ALL_SUBMITTED' | 'AFTER_DEADLINE' | 'MANUAL' | 'NEVER',
     resultsReleased: false,
+    scoreAggregationStrategy: 'HIGHEST' as 'HIGHEST' | 'LOWEST' | 'AVERAGE',
   });
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -383,7 +384,21 @@ export default function CreateQuizPage() {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-1">
+                <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Score aggregation for multiple attempts</label>
+                  <select
+                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm
+                      focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
+                    value={form.scoreAggregationStrategy}
+                    onChange={(e) => setForm({ ...form, scoreAggregationStrategy: e.target.value as any })}
+                  >
+                    <option value="HIGHEST">Highest score (best attempt)</option>
+                    <option value="LOWEST">Lowest score</option>
+                    <option value="AVERAGE">Average of all attempts</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">When can students see their results?</label>
                   <select

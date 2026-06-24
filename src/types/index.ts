@@ -392,6 +392,7 @@ export interface Quiz {
   showCorrectAnswers?: boolean;
   resultVisibilityType?: 'IMMEDIATELY' | 'AFTER_ALL_SUBMITTED' | 'AFTER_DEADLINE' | 'MANUAL' | 'NEVER';
   resultsReleased?: boolean;
+  scoreAggregationStrategy?: 'HIGHEST' | 'LOWEST' | 'AVERAGE';
   maxAttempts?: number;
   startTime?: string;
   endTime?: string;

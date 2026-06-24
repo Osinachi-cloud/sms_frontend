@@ -247,10 +247,10 @@ export function TeacherDashboardView() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                <Link href="/teacher/gradebook">
+                <Link href="/teacher/assessments">
                   <div className="flex flex-col items-center gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer">
-                    <Edit className="w-8 h-8 text-blue-500" />
-                    <span className="text-sm font-medium">Enter Grades</span>
+                    <ClipboardList className="w-8 h-8 text-blue-500" />
+                    <span className="text-sm font-medium">Assessments</span>
                   </div>
                 </Link>
                 <Link href="/teacher/attendance">

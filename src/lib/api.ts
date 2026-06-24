@@ -309,6 +309,19 @@ export const gradeApi = {
     api.get(`/api/schools/${schoolId}/students/${studentId}/grades/term/${termId}`),
 };
 
+export const gradebookApi = {
+  getEntries: (schoolId: string, params?: {
+    classId?: string;
+    subjectId?: string;
+    studentId?: string;
+    termId?: string;
+    sessionId?: string;
+    search?: string;
+    page?: number;
+    size?: number;
+  }) => api.get(`/api/schools/${schoolId}/gradebook`, { params }),
+};
+
 export const attendanceApi = {
   // Student endpoints (new paths)
   getStudentAttendance: (schoolId: string, studentId: string, params?: { startDate?: string; endDate?: string }) =>
@@ -444,6 +457,33 @@ export const quizApi = {
     api.post(`/api/schools/${schoolId}/quizzes/${quizId}/release-results`),
   addToGrades: (schoolId: string, quizId: string) =>
     api.post(`/api/schools/${schoolId}/quizzes/${quizId}/add-to-grades`),
+};
+
+export const assessmentApi = {
+  create: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/assessments`, data),
+  list: (schoolId: string, params?: { teacherId?: string; search?: string; page?: number; size?: number }) =>
+    api.get(`/api/schools/${schoolId}/assessments`, { params }),
+  getOne: (schoolId: string, assessmentId: string) =>
+    api.get(`/api/schools/${schoolId}/assessments/${assessmentId}`),
+  update: (schoolId: string, assessmentId: string, data: any) =>
+    api.put(`/api/schools/${schoolId}/assessments/${assessmentId}`, data),
+  delete: (schoolId: string, assessmentId: string) =>
+    api.delete(`/api/schools/${schoolId}/assessments/${assessmentId}`),
+  saveScores: (schoolId: string, assessmentId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/assessments/${assessmentId}/scores`, data),
+  getScores: (schoolId: string, assessmentId: string) =>
+    api.get(`/api/schools/${schoolId}/assessments/${assessmentId}/scores`),
+  listAdmin: (schoolId: string, params?: { classId?: string; subjectId?: string; termId?: string }) =>
+    api.get(`/api/schools/${schoolId}/assessments/admin`, { params }),
+  getAvailable: (schoolId: string, params: { classId: string; subjectId: string; termId: string }) =>
+    api.get(`/api/schools/${schoolId}/assessments/available`, { params }),
+  saveGradingScheme: (schoolId: string, data: any) =>
+    api.post(`/api/schools/${schoolId}/assessments/grading-scheme`, data),
+  getGradingScheme: (schoolId: string, params: { classId: string; subjectId: string; termId: string }) =>
+    api.get(`/api/schools/${schoolId}/assessments/grading-scheme`, { params }),
+  computeGradedScores: (schoolId: string, params: { classId: string; subjectId: string; termId: string }) =>
+    api.get(`/api/schools/${schoolId}/assessments/graded-scores`, { params }),
 };
 
 export const classApi = {

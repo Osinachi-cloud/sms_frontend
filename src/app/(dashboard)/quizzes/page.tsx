@@ -39,6 +39,7 @@ import {
   Layers,
   TrendingUp,
   Flame,
+  RefreshCw,
 } from 'lucide-react';
 
 import * as XLSX from 'xlsx';
@@ -922,11 +923,7 @@ function QuizCard({
             <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{quiz.title}</h3>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {attempted && (
-              <Badge variant="success" className="text-[10px] border-0 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
-                {quiz.bestScore}/{quiz.totalMarks}
-              </Badge>
-            )}
+            {/* Status indicators moved to the badges row below for cleaner header */}
           </div>
         </div>
 
@@ -942,6 +939,10 @@ function QuizCard({
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
             <Trophy className="w-3 h-3 text-slate-400" /> {quiz.totalMarks} marks
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800" title="Attempts used out of total allowed">
+            <RefreshCw className="w-3 h-3 text-slate-400" />
+            <span className="hidden sm:inline">Attempts:</span> {quiz.attemptsUsed || 0}/{quiz.maxAttempts || 1}
           </span>
           {quiz.className && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
@@ -975,21 +976,21 @@ function QuizCard({
         {/* Actions */}
         {isStudent ? (
           <div className="flex gap-2">
-            {attempted && (
-              <div className="flex-1 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/20 text-center">
-                <Trophy className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
-                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">{quiz.bestScore}/{quiz.totalMarks}</p>
-              </div>
-            )}
             {!disabled && !isNotStarted && attemptsRemaining > 0 ? (
               <Link href={`/quizzes/${quiz.id}/take`} className="flex-1">
                 <Button size="sm" className="w-full shadow-md shadow-primary-500/15">
-                  <Play className="w-3.5 h-3.5 mr-1.5" /> {attempted ? 'Retake' : 'Start'}
+                  <Play className="w-3.5 h-3.5 mr-1.5" />
+                  {attempted
+                    ? `Retake (${attemptsRemaining} left)`
+                    : quiz.maxAttempts && quiz.maxAttempts > 1
+                      ? `Start (${quiz.maxAttempts} attempts)`
+                      : 'Start'}
                 </Button>
               </Link>
             ) : (
               <Button size="sm" className="w-full" disabled>
-                <Lock className="w-3.5 h-3.5 mr-1.5" /> {isExpired ? 'Expired' : isNotStarted ? 'Not started' : 'No attempts left'}
+                <Lock className="w-3.5 h-3.5 mr-1.5" />
+                {isExpired ? 'Expired' : isNotStarted ? 'Not started' : 'No attempts remaining'}
               </Button>
             )}
           </div>

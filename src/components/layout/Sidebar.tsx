@@ -48,6 +48,7 @@ const platformAdminNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Schools', href: '/schools', icon: School },
   { name: 'Deletion Requests', href: '/admin/deletion-requests', icon: Trash2 },
+  { name: 'Gradebook', href: '/gradebook', icon: Award },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -70,6 +71,7 @@ const schoolAdminNavItems: NavItem[] = [
   { name: 'Report Cards', href: '/report-cards', icon: FileText },
   { name: 'Admissions', href: '/admissions', icon: TicketCheck },
   { name: 'Payments', href: '/payments', icon: CreditCard, permission: 'payment.read' },
+  { name: 'Gradebook', href: '/gradebook', icon: Award, permission: 'student.grades.read' },
   { name: 'Analytics', href: '/analytics', icon: BarChart3, permission: 'analytics.academic.view' },
   { name: 'Gamification', href: '/gamification', icon: Gamepad2 },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
@@ -110,6 +112,7 @@ const teacherNavItems: NavItem[] = [
   { name: 'My Subjects', href: '/teacher/my-subjects', icon: BookOpen },
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Attendance', href: '/teacher/attendance', icon: CalendarDays },
+  { name: 'Assessments', href: '/teacher/assessments', icon: ClipboardList },
   { name: 'Gradebook', href: '/teacher/gradebook', icon: Award },
   { name: 'Promotions', href: '/promotions', icon: GraduationCap },
   { name: 'Content', href: '/content', icon: BookOpen },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
-import { gradebookApi, classApi, subjectApi, termApi, academicSessionApi } from '@/lib/api';
+import { gradebookApi, classApi, subjectApi, termApi, academicSessionApi, studentApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
@@ -34,15 +34,17 @@ interface GradebookEntry {
 
 const PAGE_SIZE = 50;
 
-export default function TeacherGradebookPage() {
+export default function AdminGradebookPage() {
   const { currentSchool } = useAuth();
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
+  const [students, setStudents] = useState<{ id: string; fullName: string; admissionNumber?: string }[]>([]);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
   const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
 
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [termId, setTermId] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [search, setSearch] = useState('');
@@ -61,9 +63,10 @@ export default function TeacherGradebookPage() {
     async function loadMeta() {
       try {
         setLoadingMeta(true);
-        const [cRes, sRes, tRes, sessRes, currentTermRes, currentSessionRes] = await Promise.all([
+        const [cRes, sRes, stRes, tRes, sessRes, currentTermRes, currentSessionRes] = await Promise.all([
           classApi.getAll(currentSchool!.id, { size: 100 }),
           subjectApi.getAll(currentSchool!.id, { size: 100 }),
+          studentApi.getAll(currentSchool!.id, { size: 200, status: 'ACTIVE' }),
           termApi.getAll(currentSchool!.id, { size: 100 }),
           academicSessionApi.getAll(currentSchool!.id, { size: 100 }),
           termApi.getCurrent(currentSchool!.id).catch(() => ({ data: null })),
@@ -72,16 +75,18 @@ export default function TeacherGradebookPage() {
 
         const cls = ((cRes.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name }));
         const sub = ((sRes.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name }));
+        const std = ((stRes.data as any)?.content || []).map((x: any) => ({ id: x.id, fullName: x.fullName, admissionNumber: x.admissionNumber }));
         const trm = ((tRes.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name }));
         const sess = ((sessRes.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name }));
 
         if (!mounted) return;
         setClasses(cls);
         setSubjects(sub);
+        setStudents(std);
         setTerms(trm);
         setSessions(sess);
 
-        // Defaults: current term/session
+        // Defaults: current term/session, all classes/subjects/students
         const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
         const defaultSessionId = currentSessionRes?.data?.id || sess[0]?.id || '';
         setTermId(defaultTermId);
@@ -103,6 +108,7 @@ export default function TeacherGradebookPage() {
       const res = await gradebookApi.getEntries(currentSchool.id, {
         classId: classId || undefined,
         subjectId: subjectId || undefined,
+        studentId: studentId || undefined,
         termId: termId || undefined,
         sessionId: sessionId || undefined,
         search: search.trim() || undefined,
@@ -141,18 +147,19 @@ export default function TeacherGradebookPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentSchool, classId, subjectId, termId, sessionId, search, currentPage]);
+  }, [currentSchool, classId, subjectId, studentId, termId, sessionId, search, currentPage]);
 
   // Load gradebook data when filters or page change
   useEffect(() => {
     if (!currentSchool || loadingMeta) return;
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSchool, classId, subjectId, termId, sessionId, search, currentPage, loadData]);
+  }, [currentSchool, classId, subjectId, studentId, termId, sessionId, search, currentPage, loadData]);
 
   const clearFilters = () => {
     setClassId('');
     setSubjectId('');
+    setStudentId('');
     setSearch('');
     setCurrentPage(0);
   };
@@ -187,10 +194,10 @@ export default function TeacherGradebookPage() {
       <div>
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
           <GraduationCap className="w-7 h-7 text-primary-500" />
-          My Gradebook
+          School Gradebook
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          View all grades, assessments and quiz results for your classes
+          View all grades, assessments and quiz results across the school
         </p>
       </div>
 
@@ -212,6 +219,14 @@ export default function TeacherGradebookPage() {
           >
             <option value="">All Subjects</option>
             {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select
+            className="px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+            value={studentId}
+            onChange={(e) => { setStudentId(e.target.value); setCurrentPage(0); }}
+          >
+            <option value="">All Students</option>
+            {students.map((s) => <option key={s.id} value={s.id}>{s.fullName} {s.admissionNumber ? `(${s.admissionNumber})` : ''}</option>)}
           </select>
           <select
             className="px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
@@ -241,7 +256,7 @@ export default function TeacherGradebookPage() {
               className="w-full pl-9 pr-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
             />
           </div>
-          {(classId || subjectId || search) && (
+          {(classId || subjectId || studentId || search) && (
             <button
               onClick={clearFilters}
               className="px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
@@ -273,7 +288,7 @@ export default function TeacherGradebookPage() {
             <AlertCircle className="w-12 h-12 text-slate-300 mx-auto" />
             <p className="text-sm font-medium text-slate-500">No gradebook entries found</p>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Try adjusting your filters. Results will appear once you create assessments, enter grades, or students take quizzes.
+              Try adjusting your filters. Results will appear once teachers create assessments, enter grades, or students take quizzes.
             </p>
           </CardContent>
         </Card>
