@@ -197,19 +197,25 @@ export function StudentDashboardView() {
           </motion.div>
 
           <motion.div variants={item}>
-            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
+            <Card className="bg-gradient-to-br from-indigo-500 via-blue-500 to-blue-600 text-white border-none shadow-lg shadow-blue-500/20">
+              <CardContent className="p-4 sm:p-6 relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-10">
+                  <BookOpen className="w-24 h-24 rotate-12" />
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-blue-100 text-sm">Subjects</p>
+                    <p className="text-blue-100 text-sm font-medium">Subjects</p>
                     <p className="text-3xl font-bold mt-1">
                       {dashboard!.subjects.length}
                     </p>
-                    <p className="text-blue-100 text-xs mt-2">
+                    <p className="text-blue-100 text-xs mt-2 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
                       Enrolled this term
                     </p>
                   </div>
-                  <BookOpen className="w-12 h-12 text-blue-200" />
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>

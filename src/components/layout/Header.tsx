@@ -44,10 +44,14 @@ export function Header() {
 
   useEffect(() => {
     if (currentSchool?.id) {
-      notificationApi.getCount().then((r) => setNotifCount(r.data));
-      notificationApi.getUnread().then((r) => setNotifications(normalizeListResponse<any>(r.data).items));
+      // Use a small delay to avoid firing immediately on potential rapid re-renders
+      const timer = setTimeout(() => {
+        notificationApi.getCount().then((r) => setNotifCount(r.data));
+        notificationApi.getUnread().then((r) => setNotifications(normalizeListResponse<any>(r.data).items));
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [currentSchool]);
+  }, [currentSchool?.id]);
 
   const toggleTheme = () => {
     const newValue = !isDark;

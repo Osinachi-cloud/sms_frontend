@@ -32,9 +32,10 @@ export function AiTutorWidget() {
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
+      // Don't refetch if we already have suggestions for the current page
       fetchSuggestions();
     }
-  }, [isOpen, messages.length]);
+  }, [isOpen]); // Only depend on isOpen to avoid refetching on every page change if already open
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

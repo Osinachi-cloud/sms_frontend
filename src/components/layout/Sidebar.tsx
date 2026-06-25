@@ -114,6 +114,7 @@ const teacherNavItems: NavItem[] = [
   { name: 'Attendance', href: '/teacher/attendance', icon: CalendarDays },
   { name: 'Assessments', href: '/teacher/assessments', icon: ClipboardList },
   { name: 'Gradebook', href: '/teacher/gradebook', icon: Award },
+  { name: 'Library', href: '/library', icon: Library },
   { name: 'Promotions', href: '/promotions', icon: GraduationCap },
   { name: 'Content', href: '/content', icon: BookOpen },
   { name: 'Quizzes', href: '/quizzes', icon: ClipboardList },

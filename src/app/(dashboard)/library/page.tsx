@@ -4,17 +4,33 @@ import { libraryApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Library, Search, BookOpen, Download, Plus, FileText, Headphones, Video } from 'lucide-react';
+import { Library, Search, BookOpen, Download, Plus, FileText, Headphones, Video, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { normalizeListResponse } from '@/lib/utils';
 
 export default function LibraryPage() {
-  const { currentSchool } = useAuth();
+  const { currentSchool, isPlatformAdmin, hasPermission } = useAuth();
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [newBook, setNewBook] = useState({
+    title: '',
+    author: '',
+    isbn: '',
+    fileType: 'PDF',
+    description: '',
+    audienceRoles: ['STUDENT', 'TEACHER', 'PARENT'],
+  });
+
+  const roleName = currentSchool?.roleName?.toLowerCase() || '';
+  const canManage = isPlatformAdmin() || 
+                   roleName.includes('admin') || 
+                   roleName.includes('teacher') || 
+                   roleName.includes('librarian') ||
+                   hasPermission('library.books.manage');
 
   const defaultBooks = [
     { id: '1', title: 'Introduction to Mathematics', author: 'Dr. John Smith', fileType: 'PDF', coverImageUrl: '', isDigital: true, availableCopies: 5, categoryName: 'Mathematics' },
@@ -48,6 +64,38 @@ export default function LibraryPage() {
     setBooks(res.data || []);
   };
 
+  const handleDelete = async (bookId: string) => {
+    if (!currentSchool?.id || !confirm('Are you sure you want to delete this book?')) return;
+    try {
+      await libraryApi.delete(currentSchool.id, bookId);
+      setBooks(books.filter(b => b.id !== bookId));
+    } catch (err) {
+      console.error('Delete failed', err);
+    }
+  };
+
+  const handleAddBook = async () => {
+    if (!currentSchool?.id || !newBook.title) return;
+    setSubmitting(true);
+    try {
+      const res = await libraryApi.create(currentSchool.id, newBook);
+      setBooks([res.data, ...books]);
+      setShowAdd(false);
+      setNewBook({
+        title: '',
+        author: '',
+        isbn: '',
+        fileType: 'PDF',
+        description: '',
+        audienceRoles: ['STUDENT', 'TEACHER', 'PARENT'],
+      });
+    } catch (err) {
+      console.error('Add failed', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'AUDIO': return <Headphones className="w-4 h-4" />;
@@ -60,9 +108,11 @@ export default function LibraryPage() {
     <div className="space-y-6" data-tour="library">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold gradient-text">Digital Library</h1>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="w-4 h-4" /> Add Book
-        </Button>
+        {canManage && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="w-4 h-4" /> Add Book
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -102,10 +152,18 @@ export default function LibraryPage() {
                     <p className="text-[10px] text-slate-400 uppercase tracking-wider">{book.fileType}</p>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <button className="p-3 rounded-full bg-white/90 text-slate-900">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button className="p-3 rounded-full bg-white/90 text-slate-900 hover:bg-white transition-colors">
                     <Download className="w-5 h-5" />
                   </button>
+                  {canManage && (
+                    <button 
+                      onClick={() => handleDelete(book.id)}
+                      className="p-3 rounded-full bg-red-500/90 text-white hover:bg-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="p-3">
@@ -122,19 +180,100 @@ export default function LibraryPage() {
       )}
 
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Book" size="md">
-        <div className="space-y-4">
-          <input className="glass-input w-full" placeholder="Title" />
-          <input className="glass-input w-full" placeholder="Author" />
-          <input className="glass-input w-full" placeholder="ISBN (optional)" />
-          <select className="glass-input w-full">
-            <option value="PDF">PDF</option>
-            <option value="EPUB">EPUB</option>
-            <option value="AUDIO">Audio</option>
-            <option value="VIDEO">Video</option>
-            <option value="LINK">External Link</option>
-          </select>
-          <input type="file" className="glass-input w-full" />
-          <Button className="w-full"><Plus className="w-4 h-4" /> Add to Library</Button>
+        <div className="space-y-4 p-1">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Title</label>
+              <input 
+                className="glass-input w-full" 
+                placeholder="e.g. Advanced Physics" 
+                value={newBook.title}
+                onChange={e => setNewBook({...newBook, title: e.target.value})}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Author</label>
+              <input 
+                className="glass-input w-full" 
+                placeholder="e.g. Stephen Hawking" 
+                value={newBook.author}
+                onChange={e => setNewBook({...newBook, author: e.target.value})}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">ISBN</label>
+              <input 
+                className="glass-input w-full" 
+                placeholder="Optional" 
+                value={newBook.isbn}
+                onChange={e => setNewBook({...newBook, isbn: e.target.value})}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Format</label>
+              <select 
+                className="glass-input w-full"
+                value={newBook.fileType}
+                onChange={e => setNewBook({...newBook, fileType: e.target.value})}
+              >
+                <option value="PDF">PDF Document</option>
+                <option value="EPUB">ePub eBook</option>
+                <option value="AUDIO">Audio Book</option>
+                <option value="VIDEO">Video Lecture</option>
+                <option value="LINK">External Link</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Audience (Visible to)</label>
+            <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+              {['STUDENT', 'TEACHER', 'PARENT', 'LIBRARIAN'].map(role => (
+                <label key={role} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                    checked={newBook.audienceRoles.includes(role)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setNewBook({...newBook, audienceRoles: [...newBook.audienceRoles, role]});
+                      } else {
+                        setNewBook({...newBook, audienceRoles: newBook.audienceRoles.filter(r => r !== role)});
+                      }
+                    }}
+                  />
+                  <span className="text-xs font-medium">{role}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Description</label>
+            <textarea 
+              className="glass-input w-full min-h-[80px]" 
+              placeholder="Brief summary of the book..." 
+              value={newBook.description}
+              onChange={e => setNewBook({...newBook, description: e.target.value})}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Upload File</label>
+            <div className="relative group">
+              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+              <div className="glass-input w-full py-4 border-dashed border-2 flex flex-col items-center justify-center gap-2 group-hover:border-primary-400 transition-colors">
+                <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary-400" />
+                <span className="text-xs text-slate-500">Click or drag to upload book file (Mock)</span>
+              </div>
+            </div>
+          </div>
+          <Button 
+            onClick={handleAddBook}
+            disabled={submitting || !newBook.title}
+            className="w-full h-11 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 shadow-lg shadow-primary-500/20"
+          >
+            {submitting ? 'Adding...' : 'Add to Library'}
+          </Button>
         </div>
       </Modal>
     </div>

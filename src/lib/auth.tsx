@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { User, AuthResponse, SchoolInfo } from '@/types';
 import { authApi, temporaryPermissionApi } from './api';
 import { useRouter } from 'next/navigation';
@@ -185,12 +185,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
+  const prevSchoolId = useRef<string | null>(null);
+  const prevUserId = useRef<string | null>(null);
+
   // Fetch temporary permissions whenever user or school changes
   useEffect(() => {
     if (!user?.id || !currentSchool?.id) {
       setTemporaryPermissions([]);
+      prevSchoolId.current = null;
+      prevUserId.current = null;
       return;
     }
+
+    // Avoid redundant calls if the IDs haven't changed
+    if (prevSchoolId.current === currentSchool.id && prevUserId.current === user.id) {
+      return;
+    }
+
+    prevSchoolId.current = currentSchool.id;
+    prevUserId.current = user.id;
+
     temporaryPermissionApi.getUserPermissions(currentSchool.id, user.id)
       .then((res: any) => {
         const perms = (res.data || []).map((p: any) => p.permissionKey || p.permission);

@@ -525,6 +525,8 @@ export const libraryApi = {
     api.get(`/api/schools/${schoolId}/library/books/search`, { params: { query } }),
   create: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/library/books`, data),
+  delete: (schoolId: string, bookId: string) =>
+    api.delete(`/api/schools/${schoolId}/library/books/${bookId}`),
 };
 
 export const gamificationApi = {
