@@ -1,8 +1,8 @@
 'use client';
 
-import { libraryApi } from '@/lib/api';
+import { libraryApi, uploadApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Library, Search, BookOpen, Download, Plus, FileText, Headphones, Video, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
@@ -10,12 +10,14 @@ import { Button } from '@/components/ui/Button';
 import { normalizeListResponse } from '@/lib/utils';
 
 export default function LibraryPage() {
-  const { currentSchool, isPlatformAdmin, hasPermission } = useAuth();
+  const { user, currentSchool, isPlatformAdmin, hasPermission } = useAuth();
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newBook, setNewBook] = useState({
     title: '',
     author: '',
@@ -32,14 +34,6 @@ export default function LibraryPage() {
                    roleName.includes('librarian') ||
                    hasPermission('library.books.manage');
 
-  const defaultBooks = [
-    { id: '1', title: 'Introduction to Mathematics', author: 'Dr. John Smith', fileType: 'PDF', coverImageUrl: '', isDigital: true, availableCopies: 5, categoryName: 'Mathematics' },
-    { id: '2', title: 'English Grammar Essentials', author: 'Jane Doe', fileType: 'PDF', coverImageUrl: '', isDigital: true, availableCopies: 3, categoryName: 'English' },
-    { id: '3', title: 'Basic Physics Concepts', author: 'Prof. Alan Grant', fileType: 'VIDEO', coverImageUrl: '', isDigital: true, availableCopies: 1, categoryName: 'Science' },
-    { id: '4', title: 'World History: Ancient Times', author: 'Sarah Connor', fileType: 'EPUB', coverImageUrl: '', isDigital: true, availableCopies: 2, categoryName: 'History' },
-    { id: '5', title: 'Coding for Kids - Scratch', author: 'Mark Zuckerberg', fileType: 'PDF', coverImageUrl: '', isDigital: true, availableCopies: 10, categoryName: 'STEM' },
-  ];
-
   useEffect(() => {
     if (currentSchool?.id) {
       loadBooks();
@@ -51,9 +45,10 @@ export default function LibraryPage() {
     try {
       const res = await libraryApi.getAll(currentSchool!.id, { size: 50 });
       const items = normalizeListResponse<any>(res.data).items;
-      setBooks(items.length ? items : defaultBooks);
-    } catch {
-      setBooks(defaultBooks);
+      setBooks(items);
+    } catch (err) {
+      console.error('Load failed', err);
+      setBooks([]);
     }
     setLoading(false);
   };
@@ -78,9 +73,19 @@ export default function LibraryPage() {
     if (!currentSchool?.id || !newBook.title) return;
     setSubmitting(true);
     try {
-      const res = await libraryApi.create(currentSchool.id, newBook);
+      let fileUrl = '';
+      if (selectedFile) {
+        const uploadRes = await uploadApi.upload(currentSchool.id, selectedFile, 'library');
+        fileUrl = uploadRes.data.url;
+      }
+
+      const res = await libraryApi.create(currentSchool.id, {
+        ...newBook,
+        fileUrl,
+      });
       setBooks([res.data, ...books]);
       setShowAdd(false);
+      setSelectedFile(null);
       setNewBook({
         title: '',
         author: '',
@@ -93,6 +98,39 @@ export default function LibraryPage() {
       console.error('Add failed', err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDownload = async (book: any) => {
+    if (!book.fileUrl) {
+      alert('No download link available for this book.');
+      return;
+    }
+    
+    // Ensure the URL is absolute if it starts with /uploads
+    const downloadUrl = book.fileUrl.startsWith('/') 
+      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081'}${book.fileUrl}`
+      : book.fileUrl;
+
+    try {
+      // Fetch the file as a blob to bypass cross-origin restrictions on the 'download' attribute
+      const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${book.title}.${book.fileType.toLowerCase() || 'pdf'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed', err);
+      // Fallback to direct link if fetch fails
+      window.open(downloadUrl, '_blank');
     }
   };
 
@@ -133,7 +171,7 @@ export default function LibraryPage() {
             <div key={i} className="h-64 glass-card rounded-2xl animate-pulse" />
           ))}
         </div>
-      ) : (
+      ) : books.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {books.map((book, i) => (
             <motion.div
@@ -153,13 +191,23 @@ export default function LibraryPage() {
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button className="p-3 rounded-full bg-white/90 text-slate-900 hover:bg-white transition-colors">
+                  <button 
+                    onClick={() => handleDownload(book)}
+                    className="p-3 rounded-full bg-white/90 text-slate-900 hover:bg-white transition-colors"
+                    title="Download"
+                  >
                     <Download className="w-5 h-5" />
                   </button>
                   {canManage && (
                     <button 
                       onClick={() => handleDelete(book.id)}
-                      className="p-3 rounded-full bg-red-500/90 text-white hover:bg-red-500 transition-colors"
+                      className={`p-3 rounded-full text-white transition-colors ${
+                        (isPlatformAdmin() || roleName.includes('admin') || book.createdBy === user?.id)
+                          ? 'bg-red-500/90 hover:bg-red-500'
+                          : 'bg-slate-400/50 cursor-not-allowed'
+                      }`}
+                      disabled={!(isPlatformAdmin() || roleName.includes('admin') || book.createdBy === user?.id)}
+                      title={(isPlatformAdmin() || roleName.includes('admin') || book.createdBy === user?.id) ? 'Delete' : 'Only owners or admins can delete'}
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -176,6 +224,11 @@ export default function LibraryPage() {
               </div>
             </motion.div>
           ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+          <BookOpen className="w-12 h-12 mb-4 opacity-20" />
+          <p>No books found in the library</p>
         </div>
       )}
 
@@ -259,11 +312,35 @@ export default function LibraryPage() {
           </div>
           <div className="space-y-1">
             <label className="text-[10px] uppercase tracking-wider text-slate-500 ml-1">Upload File</label>
-            <div className="relative group">
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-              <div className="glass-input w-full py-4 border-dashed border-2 flex flex-col items-center justify-center gap-2 group-hover:border-primary-400 transition-colors">
-                <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary-400" />
-                <span className="text-xs text-slate-500">Click or drag to upload book file (Mock)</span>
+            <div 
+              className="relative group cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="hidden" 
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              />
+              <div className={`glass-input w-full py-4 border-dashed border-2 flex flex-col items-center justify-center gap-2 transition-colors ${selectedFile ? 'border-primary-500 bg-primary-500/5' : 'group-hover:border-primary-400'}`}>
+                {selectedFile ? (
+                  <>
+                    <FileText className="w-5 h-5 text-primary-500" />
+                    <span className="text-xs text-primary-600 font-medium">{selectedFile.name}</span>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                      className="text-[10px] text-red-500 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary-400" />
+                    <span className="text-xs text-slate-500">Click to upload book file</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

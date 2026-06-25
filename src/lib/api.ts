@@ -201,6 +201,17 @@ export const userApi = {
     api.post(`/api/schools/${schoolId}/users`, data),
 };
 
+export const uploadApi = {
+  upload: (schoolId: string, file: File, category: string = 'general') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/schools/${schoolId}/uploads`, formData, {
+      params: { category },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
 export const cmsApi = {
   getFolders: (schoolId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/cms/folders`, { params }),
