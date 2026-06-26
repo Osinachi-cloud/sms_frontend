@@ -128,7 +128,12 @@ export default function QuizzesPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'ALL' | 'EXAM' | 'TEST' | 'QUIZ'>('ALL');
+  const [filterType, setFilterType] = useState<string>('ALL');
+
+  // Standard quiz types always shown, merged with any dynamic types discovered from data
+  const discoveredTypes = Array.from(new Set(quizzes.map((q) => q.quizType).filter(Boolean))) as string[];
+  const standardTypes = ['QUIZ', 'ASSIGNMENT', 'ASSESSMENT', 'EXAM'];
+  const quizTypes = ['ALL', ...Array.from(new Set([...standardTypes, ...discoveredTypes]))];
 
   // Import modal state
   const [showImport, setShowImport] = useState(false);
@@ -484,7 +489,7 @@ export default function QuizzesPage() {
           />
         </div>
         <div className="flex gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
-          {(['ALL', 'EXAM', 'TEST', 'QUIZ'] as const).map((t) => (
+          {quizTypes.map((t) => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
@@ -894,11 +899,12 @@ function QuizCard({
 
   const typeColors: Record<string, { bg: string; text: string; border: string; icon: any }> = {
     EXAM: { bg: 'bg-rose-50 dark:bg-rose-900/10', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/30', icon: Trophy },
-    TEST: { bg: 'bg-amber-50 dark:bg-amber-900/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/30', icon: TrendingUp },
+    ASSESSMENT: { bg: 'bg-amber-50 dark:bg-amber-900/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/30', icon: TrendingUp },
+    ASSIGNMENT: { bg: 'bg-blue-50 dark:bg-blue-900/10', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800/30', icon: BookOpen },
     QUIZ: { bg: 'bg-emerald-50 dark:bg-emerald-900/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/30', icon: CheckCircle },
   };
 
-  const tc = typeColors[quiz.quizType || 'QUIZ'];
+  const tc = typeColors[quiz.quizType || 'QUIZ'] || typeColors['QUIZ'];
   const TypeIcon = tc.icon;
 
   return (

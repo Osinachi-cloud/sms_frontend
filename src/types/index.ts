@@ -397,7 +397,7 @@ export interface Quiz {
   startTime?: string;
   endTime?: string;
   status?: string;
-  quizType?: 'EXAM' | 'TEST' | 'QUIZ';
+  quizType?: 'QUIZ' | 'ASSIGNMENT' | 'ASSESSMENT' | 'EXAM';
   isEnabled?: boolean;
   termId?: string;
   termName?: string;

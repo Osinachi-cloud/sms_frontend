@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import { assessmentApi, classApi, subjectApi, termApi } from '@/lib/api';
+import { assessmentApi, classApi, subjectApi, termApi, academicSessionApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -62,10 +62,14 @@ export default function TeacherAssessmentsPage() {
       classApi.getAll(currentSchool.id, { size: 100 }),
       subjectApi.getAll(currentSchool.id, { size: 100 }),
       termApi.getAll(currentSchool.id, { size: 100 }),
-    ]).then(([c, s, t]) => {
+      termApi.getCurrent(currentSchool.id).catch(() => ({ data: null })),
+    ]).then(([c, s, t, currentTermRes]) => {
+      const trm = ((t.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name }));
       setClasses(((c.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name })));
       setSubjects(((s.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name })));
-      setTerms(((t.data as any)?.content || []).map((x: any) => ({ id: x.id, name: x.name })));
+      setTerms(trm);
+      const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
+      setForm((prev) => ({ ...prev, termId: defaultTermId }));
     });
   }, [currentSchool, search]);
 

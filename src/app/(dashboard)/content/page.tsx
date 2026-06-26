@@ -95,6 +95,8 @@ export default function ContentPage() {
   const [teacherAssignments, setTeacherAssignments] = useState<ClassAssignment[]>([]);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
   const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
+  const [currentTermId, setCurrentTermId] = useState<string>('');
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -156,6 +158,8 @@ export default function ContentPage() {
         subjectApi.getAll(currentSchool.id, { size: 100 }),
         termApi.getAll(currentSchool.id, { size: 100 }),
         academicSessionApi.getAll(currentSchool.id, { size: 100 }),
+        termApi.getCurrent(currentSchool.id).catch(() => ({ data: null })),
+        academicSessionApi.getCurrent(currentSchool.id).catch(() => ({ data: null })),
         hasPermission('cms.content.approve')
           ? cmsApi.getPendingContent(currentSchool.id, { size: 1 })
           : Promise.resolve({ data: { totalElements: 0 } }),
@@ -166,15 +170,21 @@ export default function ContentPage() {
         promises.push(dashboardApi.getTeacherDashboard(currentSchool.id));
       }
 
-      const [foldersRes, classesRes, subjectsRes, termsRes, sessionsRes, pendingRes, teacherDashRes] = await Promise.all(promises);
+      const [foldersRes, classesRes, subjectsRes, termsRes, sessionsRes, currentTermRes, currentSessionRes, pendingRes, teacherDashRes] = await Promise.all(promises);
 
       const folderData = foldersRes.data as any;
       setSubjects((folderData.subjects || []) as SubjectWithFolders[]);
       setUnassignedFolders((folderData.unassignedFolders || []) as ContentFolder[]);
       setClasses((classesRes.data as PageResponse<Classroom>).content || []);
       setAllSchoolSubjects((subjectsRes.data as PageResponse<any>).content.map((s: any) => ({ id: s.id, name: s.name, classIds: s.classIds || [] })) || []);
-      setTerms((termsRes.data as PageResponse<any>).content.map((t: any) => ({ id: t.id, name: t.name })) || []);
-      setSessions((sessionsRes.data as PageResponse<any>).content.map((s: any) => ({ id: s.id, name: s.name })) || []);
+      const trm = ((termsRes.data as PageResponse<any>).content || []).map((t: any) => ({ id: t.id, name: t.name }));
+      const sess = ((sessionsRes.data as PageResponse<any>).content || []).map((s: any) => ({ id: s.id, name: s.name }));
+      setTerms(trm);
+      setSessions(sess);
+      const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
+      const defaultSessionId = currentSessionRes?.data?.id || sess[0]?.id || '';
+      setCurrentTermId(defaultTermId);
+      setCurrentSessionId(defaultSessionId);
       setPendingApprovalCount((pendingRes.data as PageResponse<any>)?.totalElements || 0);
 
       if (teacherDashRes) {
@@ -361,8 +371,8 @@ export default function ContentPage() {
       videoLink: '',
       folderId: folderId || selectedFolderId || '',
       subjectId: subjectId || selectedSubjectId || '',
-      termId: '',
-      sessionId: '',
+      termId: currentTermId,
+      sessionId: currentSessionId,
       targetClassIds: [],
     });
     setIsContentModalOpen(true);

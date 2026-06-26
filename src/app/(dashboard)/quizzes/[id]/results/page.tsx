@@ -123,8 +123,13 @@ export default function QuizResultsPage() {
   const handleAddToGrades = async () => {
     if (!schoolId || !quizId) return;
     try {
-      await quizApi.addToGrades(schoolId, quizId);
-      toast.success('Scores added to gradebook');
+      const res = await quizApi.addToGrades(schoolId, quizId);
+      const data = res.data as any;
+      if (data?.processed === 0) {
+        toast(`No students had submissions for this quiz. ${data?.totalSubmissions ?? 0} submissions found, but none were eligible.`, { icon: '⚠️' });
+      } else {
+        toast.success(`${data?.processed ?? 'Scores'} added to gradebook for ${data?.quizType ?? 'quiz'} — ${data?.quizTitle ?? ''}`);
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to add to grades');
     }

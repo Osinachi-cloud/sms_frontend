@@ -24,11 +24,18 @@ interface Subject {
   classIds: string[];
   classNames: string[];
   enrollmentCount: number;
+  gradingSchemeId?: string;
 }
 
 interface SchoolClass {
   id: string;
   name: string;
+}
+
+interface GradingScheme {
+  id: string;
+  name: string;
+  isDefault: boolean;
 }
 
 export default function SubjectsPage() {
@@ -39,6 +46,7 @@ export default function SubjectsPage() {
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [gradingSchemes, setGradingSchemes] = useState<GradingScheme[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -50,6 +58,7 @@ export default function SubjectsPage() {
     isFree: true,
     cost: '',
     classIds: [] as string[],
+    gradingSchemeId: '',
   });
 
   useEffect(() => {
@@ -80,9 +89,29 @@ export default function SubjectsPage() {
     }
   };
 
+  const loadGradingSchemes = async () => {
+    if (!schoolId) return;
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch(`/api/schools/${schoolId}/grading-schemes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-School-Id': schoolId,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGradingSchemes(data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const openCreate = () => {
     setEditingSubject(null);
-    setForm({ name: '', code: '', description: '', isFree: true, cost: '', classIds: [] });
+    setForm({ name: '', code: '', description: '', isFree: true, cost: '', classIds: [], gradingSchemeId: '' });
+    loadGradingSchemes();
     setShowModal(true);
   };
 
@@ -95,7 +124,9 @@ export default function SubjectsPage() {
       isFree: subject.isFree,
       cost: subject.cost ? String(subject.cost) : '',
       classIds: subject.classIds || [],
+      gradingSchemeId: subject.gradingSchemeId || '',
     });
+    loadGradingSchemes();
     setShowModal(true);
   };
 
@@ -106,6 +137,10 @@ export default function SubjectsPage() {
     }
     if (!form.name.trim()) {
       toast.error('Subject name is required');
+      return;
+    }
+    if (!form.gradingSchemeId) {
+      toast.error('Please select a grading scheme for this subject');
       return;
     }
     const payload = {
@@ -122,8 +157,9 @@ export default function SubjectsPage() {
       }
       setShowModal(false);
       loadSubjects();
-    } catch {
-      toast.error('Failed to save subject');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save subject';
+      toast.error(msg);
     }
   };
 
@@ -253,6 +289,30 @@ export default function SubjectsPage() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Grading Scheme</label>
+            {gradingSchemes.length === 0 ? (
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 p-3 rounded-lg">
+                No grading schemes found. Please go to{' '}
+                <a href="/settings?tab=grading-schemes" className="underline font-medium">Settings {'>'} Grading Schemes</a>{' '}
+                and create one first.
+              </div>
+            ) : (
+              <select
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                value={form.gradingSchemeId}
+                onChange={(e) => setForm({ ...form, gradingSchemeId: e.target.value })}
+              >
+                <option value="">Select a grading scheme...</option>
+                {gradingSchemes.map((scheme) => (
+                  <option key={scheme.id} value={scheme.id}>
+                    {scheme.name} {scheme.isDefault ? '(Default)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">

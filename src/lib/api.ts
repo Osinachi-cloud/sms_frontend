@@ -331,6 +331,9 @@ export const gradebookApi = {
     page?: number;
     size?: number;
   }) => api.get(`/api/schools/${schoolId}/gradebook`, { params }),
+
+  compute: (schoolId: string, classId?: string, subjectId?: string) =>
+    api.get(`/api/schools/${schoolId}/gradebook/compute`, { params: { classId, subjectId } }),
 };
 
 export const attendanceApi = {

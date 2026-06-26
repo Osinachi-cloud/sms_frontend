@@ -83,11 +83,18 @@ export default function CreateQuizPage() {
       classApi.getAll(schoolId, { size: 100 }),
       termApi.getAll(schoolId, { size: 100 }),
       academicSessionApi.getAll(schoolId, { size: 100 }),
-    ]).then(([subRes, clsRes, termRes, sessRes]) => {
+      termApi.getCurrent(schoolId).catch(() => ({ data: null })),
+      academicSessionApi.getCurrent(schoolId).catch(() => ({ data: null })),
+    ]).then(([subRes, clsRes, termRes, sessRes, currentTermRes, currentSessionRes]) => {
+      const trm = (termRes.data as any)?.content || [];
+      const sess = (sessRes.data as any)?.content || [];
       setSubjects((subRes.data as any)?.content || []);
       setClasses((clsRes.data as any)?.content || []);
-      setTerms((termRes.data as any)?.content || []);
-      setSessions((sessRes.data as any)?.content || []);
+      setTerms(trm);
+      setSessions(sess);
+      const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
+      const defaultSessionId = currentSessionRes?.data?.id || sess[0]?.id || '';
+      setForm((prev) => ({ ...prev, termId: defaultTermId, sessionId: defaultSessionId }));
     }).catch(() => toast.error('Failed to load lookup data'));
   }, [schoolId]);
 
@@ -220,13 +227,14 @@ export default function CreateQuizPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['QUIZ', 'TEST', 'EXAM'] as const).map((t) => (
+                <div className="flex flex-wrap gap-1.5">
+                  {(['QUIZ', 'ASSIGNMENT', 'ASSESSMENT', 'EXAM'] as const).map((t) => (
                     <button
                       key={t}
                       type="button"
                       onClick={() => setForm({ ...form, quizType: t })}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                      title={t}
+                      className={`flex-1 min-w-[60px] px-2 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
                         form.quizType === t
                           ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border-primary-200 dark:border-primary-800 shadow-sm'
                           : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'
@@ -342,13 +350,9 @@ export default function CreateQuizPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">Total Marks</label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm
-                      focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
-                    value={form.totalMarks}
-                    onChange={(e) => setForm({ ...form, totalMarks: parseInt(e.target.value) || 0 })}
-                  />
+                  <div className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-600 dark:text-slate-300">
+                    Auto-set from subject grading scheme
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">Pass Mark</label>

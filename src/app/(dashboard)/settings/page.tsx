@@ -14,6 +14,7 @@ import { settingsApi } from '@/lib/api';
 import PaymentSettings from './PaymentSettings';
 import AcademicCalendarSettings from './AcademicCalendarSettings';
 import TimetablePeriodsSettings from './TimetablePeriodsSettings';
+import GradingSchemeManager from '@/components/settings/GradingSchemeManager';
 
 const PRESET_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -199,6 +200,7 @@ export default function SettingsPage() {
   const tabs = [
     { key: 'profile', label: 'Profile', icon: User },
     ...(canManageBranding ? [{ key: 'school', label: 'School & Branding', icon: School }] : []),
+    ...(isAdminOrPlatform ? [{ key: 'grading-schemes', label: 'Grading Schemes', icon: Award }] : []),
     { key: 'timetable-periods', label: 'Timetable Periods', icon: Clock },
     { key: 'academic-calendar', label: 'Academic Calendar', icon: Calendar },
     { key: 'notifications', label: 'Notifications', icon: Bell },
@@ -628,6 +630,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Grading Schemes Tab */}
+      {activeTab === 'grading-schemes' && isAdminOrPlatform && (
+        <GradingSchemeManager schoolId={currentSchool?.id || ''} />
       )}
 
       {/* Notifications Tab */}
