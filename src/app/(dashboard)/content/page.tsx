@@ -362,7 +362,26 @@ export default function ContentPage() {
     }
   };
 
-  const openCreateContent = (folderId?: string, subjectId?: string) => {
+  const openCreateContent = (folderId?: string, explicitSubjectId?: string) => {
+    let resolvedSubjectId = explicitSubjectId || selectedSubjectId || '';
+
+    // If a folder is chosen but no explicit subject is passed, look up the folder's subject
+    if (folderId && !explicitSubjectId) {
+      for (const subject of subjects) {
+        const folder = subject.folders.find((f) => f.id === folderId);
+        if (folder) {
+          resolvedSubjectId = subject.id;
+          break;
+        }
+      }
+      if (!resolvedSubjectId) {
+        const folder = unassignedFolders.find((f) => f.id === folderId);
+        if (folder?.subjectId) {
+          resolvedSubjectId = folder.subjectId;
+        }
+      }
+    }
+
     setEditingContent(null);
     reset({
       title: '',
@@ -370,7 +389,7 @@ export default function ContentPage() {
       richText: '',
       videoLink: '',
       folderId: folderId || selectedFolderId || '',
-      subjectId: subjectId || selectedSubjectId || '',
+      subjectId: resolvedSubjectId,
       termId: currentTermId,
       sessionId: currentSessionId,
       targetClassIds: [],
@@ -935,7 +954,7 @@ export default function ContentPage() {
               Subject
             </label>
             <select {...register('subjectId')} className="glass-input w-full">
-              <option value="">No subject</option>
+              <option value=""></option>
               {availableSubjects.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -1010,7 +1029,12 @@ export default function ContentPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 Term
               </label>
-              <select {...register('termId')} className="glass-input w-full">
+              <select
+                {...register('termId')}
+                value={watch('termId') || ''}
+                onChange={(e) => setValue('termId', e.target.value, { shouldDirty: true })}
+                className="glass-input w-full"
+              >
                 <option value="">No term</option>
                 {terms.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
@@ -1021,7 +1045,12 @@ export default function ContentPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 Session
               </label>
-              <select {...register('sessionId')} className="glass-input w-full">
+              <select
+                {...register('sessionId')}
+                value={watch('sessionId') || ''}
+                onChange={(e) => setValue('sessionId', e.target.value, { shouldDirty: true })}
+                className="glass-input w-full"
+              >
                 <option value="">No session</option>
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>

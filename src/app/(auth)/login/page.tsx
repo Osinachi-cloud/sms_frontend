@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { motion } from 'framer-motion';
-import { School, Mail, Lock, Eye, EyeOff, UserCheck, GraduationCap, Shield, BookOpen } from 'lucide-react';
+import { School, Mail, Lock, Eye, EyeOff, UserCheck, GraduationCap, Shield, BookOpen, AtSign } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -14,7 +14,7 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().min(1, 'Email or username is required'),
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -96,11 +96,11 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
               <Input
                 {...register('email')}
-                type="email"
-                placeholder="Email address"
+                type="text"
+                placeholder="Email or username"
                 className="pl-10"
               />
             </div>

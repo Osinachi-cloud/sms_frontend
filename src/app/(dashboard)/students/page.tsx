@@ -28,7 +28,7 @@ interface ParentOption {
 
 interface StudentDraft {
   fullName: string;
-  email: string;
+  emailOrUsername: string;
   phone: string;
   gender: string;
   password: string;
@@ -74,7 +74,7 @@ export default function StudentsPage() {
   const [step, setStep] = useState<Step>(1);
   const [studentInfo, setStudentInfo] = useState<StudentDraft>({
     fullName: '',
-    email: '',
+    emailOrUsername: '',
     phone: '',
     gender: '',
     password: '',
@@ -200,7 +200,7 @@ export default function StudentsPage() {
 
   const resetForm = () => {
     setStep(1);
-    setStudentInfo({ fullName: '', email: '', phone: '', gender: '', password: '', dateOfBirth: '', admissionNumber: '', address: '', classId: '', status: 'ACTIVE' });
+    setStudentInfo({ fullName: '', emailOrUsername: '', phone: '', gender: '', password: '', dateOfBirth: '', admissionNumber: '', address: '', classId: '', status: 'ACTIVE' });
     setParentInfo({ fullName: '', email: '', phone: '', relationship: '', address: '', occupation: '', password: '' });
     setParentMode('new');
     setSelectedParentId('');
@@ -210,7 +210,15 @@ export default function StudentsPage() {
   const validateStep1 = () => {
     const e: Record<string, string> = {};
     if (!studentInfo.fullName.trim() || studentInfo.fullName.length < 2) e.fullName = 'Full name is required';
-    if (studentInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentInfo.email)) e.email = 'Invalid email';
+    if (studentInfo.emailOrUsername && studentInfo.emailOrUsername.includes('@')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentInfo.emailOrUsername)) {
+        e.emailOrUsername = 'Invalid email format';
+      }
+    } else if (studentInfo.emailOrUsername) {
+      if (!/[@$!%*?&._-]/.test(studentInfo.emailOrUsername)) {
+        e.emailOrUsername = 'Username must contain at least one special character (@$!%*?&._-)';
+      }
+    }
     if (studentInfo.password) {
       const pwdErr = validatePassword(studentInfo.password);
       if (pwdErr) e.password = pwdErr;
@@ -250,7 +258,6 @@ export default function StudentsPage() {
     try {
       const studentPayload: any = {
         fullName: studentInfo.fullName,
-        email: studentInfo.email || undefined,
         phone: studentInfo.phone || undefined,
         gender: studentInfo.gender || undefined,
         password: studentInfo.password || undefined,
@@ -260,6 +267,15 @@ export default function StudentsPage() {
         classId: studentInfo.classId || undefined,
         status: studentInfo.status,
       };
+
+      // Parse emailOrUsername into email or username
+      if (studentInfo.emailOrUsername) {
+        if (studentInfo.emailOrUsername.includes('@')) {
+          studentPayload.email = studentInfo.emailOrUsername;
+        } else {
+          studentPayload.username = studentInfo.emailOrUsername;
+        }
+      }
 
       // Prepare parent payload
       let parentPayload: any = undefined;
@@ -556,9 +572,10 @@ export default function StudentsPage() {
                 {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email</label>
-                <input value={studentInfo.email} onChange={(e) => setStudentInfo((p) => ({ ...p, email: e.target.value }))} type="email" placeholder="student@example.com" className={`glass-input w-full ${errors.email ? 'border-red-500' : ''}`} />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email or Username</label>
+                <input value={studentInfo.emailOrUsername} onChange={(e) => setStudentInfo((p) => ({ ...p, emailOrUsername: e.target.value }))} placeholder="email@example.com or student_username" className={`glass-input w-full ${errors.emailOrUsername ? 'border-red-500' : ''}`} />
+                <p className="text-xs text-slate-500 mt-1">Students can use an email or a username. If using a username, include at least one special character (@$!%*?&._-).</p>
+                {errors.emailOrUsername && <p className="text-red-500 text-xs mt-1">{errors.emailOrUsername}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Phone</label>
@@ -800,7 +817,7 @@ export default function StudentsPage() {
               <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">Student</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-slate-400">Name:</span> <span className="font-medium">{studentInfo.fullName || '-'}</span></div>
-                <div><span className="text-slate-400">Email:</span> <span className="font-medium">{studentInfo.email || '-'}</span></div>
+                <div><span className="text-slate-400">Email/Username:</span> <span className="font-medium">{studentInfo.emailOrUsername || '-'}</span></div>
                 <div><span className="text-slate-400">Phone:</span> <span className="font-medium">{studentInfo.phone || '-'}</span></div>
                 <div><span className="text-slate-400">Gender:</span> <span className="font-medium">{studentInfo.gender || '-'}</span></div>
                 <div><span className="text-slate-400">Class:</span> <span className="font-medium">{classesList.find(c => c.id === studentInfo.classId)?.name || '-'}</span></div>
