@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { quizApi, subjectApi, classApi, termApi, academicSessionApi } from '@/lib/api';
+import { quizApi, subjectApi, classApi, termApi, academicSessionApi, teacherAssignmentApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -42,7 +42,7 @@ const QUESTION_TYPES: { type: QuizQuestion['questionType']; label: string; icon:
 
 export default function CreateQuizPage() {
   const router = useRouter();
-  const { currentSchool } = useAuth();
+  const { currentSchool, isTeacher } = useAuth();
   const schoolId = currentSchool?.id;
 
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -78,24 +78,49 @@ export default function CreateQuizPage() {
 
   useEffect(() => {
     if (!schoolId) return;
-    Promise.all([
-      subjectApi.getAll(schoolId, { size: 100 }),
-      classApi.getAll(schoolId, { size: 100 }),
-      termApi.getAll(schoolId, { size: 100 }),
-      academicSessionApi.getAll(schoolId, { size: 100 }),
-      termApi.getCurrent(schoolId).catch(() => ({ data: null })),
-      academicSessionApi.getCurrent(schoolId).catch(() => ({ data: null })),
-    ]).then(([subRes, clsRes, termRes, sessRes, currentTermRes, currentSessionRes]) => {
-      const trm = (termRes.data as any)?.content || [];
-      const sess = (sessRes.data as any)?.content || [];
-      setSubjects((subRes.data as any)?.content || []);
-      setClasses((clsRes.data as any)?.content || []);
-      setTerms(trm);
-      setSessions(sess);
-      const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
-      const defaultSessionId = currentSessionRes?.data?.id || sess[0]?.id || '';
-      setForm((prev) => ({ ...prev, termId: defaultTermId, sessionId: defaultSessionId }));
-    }).catch(() => toast.error('Failed to load lookup data'));
+
+    const loadLookupData = async () => {
+      try {
+        const [termRes, sessRes, currentTermRes, currentSessionRes] = await Promise.all([
+          termApi.getAll(schoolId, { size: 100 }),
+          academicSessionApi.getAll(schoolId, { size: 100 }),
+          termApi.getCurrent(schoolId).catch(() => ({ data: null })),
+          academicSessionApi.getCurrent(schoolId).catch(() => ({ data: null })),
+        ]);
+
+        const trm = (termRes.data as any)?.content || [];
+        const sess = (sessRes.data as any)?.content || [];
+        setTerms(trm);
+        setSessions(sess);
+        const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
+        const defaultSessionId = currentSessionRes?.data?.id || sess[0]?.id || '';
+        setForm((prev) => ({ ...prev, termId: defaultTermId, sessionId: defaultSessionId }));
+
+        if (isTeacher()) {
+          const assignmentsRes = await teacherAssignmentApi.getMyAssignments(schoolId);
+          const assignments = (assignmentsRes.data as any[]) || [];
+          const uniqueSubjects = Array.from(
+            new Map(assignments.filter((a) => a.subjectId).map((a) => [a.subjectId, { id: a.subjectId, name: a.subjectName }])).values()
+          );
+          const uniqueClasses = Array.from(
+            new Map(assignments.filter((a) => a.classId).map((a) => [a.classId, { id: a.classId, name: a.className }])).values()
+          );
+          setSubjects(uniqueSubjects);
+          setClasses(uniqueClasses);
+        } else {
+          const [subRes, clsRes] = await Promise.all([
+            subjectApi.getAll(schoolId, { size: 100 }),
+            classApi.getAll(schoolId, { size: 100 }),
+          ]);
+          setSubjects((subRes.data as any)?.content || []);
+          setClasses((clsRes.data as any)?.content || []);
+        }
+      } catch {
+        toast.error('Failed to load lookup data');
+      }
+    };
+
+    loadLookupData();
   }, [schoolId]);
 
   const addQuestion = (type: QuizQuestion['questionType']) => {

@@ -99,6 +99,7 @@ const parentNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Children', href: '/student/fees', icon: Users },
   { name: 'Results', href: '/parent/results', icon: Award },
+  { name: 'Attendance', href: '/parent/attendance', icon: ClipboardList },
   { name: 'Calendar', href: '/calendar', icon: CalendarDays },
   { name: 'Holidays', href: '/holidays', icon: CalendarDays },
   { name: 'Messages', href: '/messages', icon: MessageSquare },

@@ -674,6 +674,8 @@ export const teacherAssignmentApi = {
     api.get(`/api/schools/${schoolId}/teacher-assignments/classes/${classId}`, { params }),
   getByTeacher: (schoolId: string, teacherId: string, params?: { page?: number; size?: number }) =>
     api.get(`/api/schools/${schoolId}/teacher-assignments/teachers/${teacherId}`, { params }),
+  getMyAssignments: (schoolId: string) =>
+    api.get(`/api/schools/${schoolId}/teacher-assignments/me`),
   assign: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/teacher-assignments`, data),
   remove: (schoolId: string, assignmentId: string) =>
