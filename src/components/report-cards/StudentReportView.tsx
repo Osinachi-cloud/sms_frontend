@@ -47,8 +47,21 @@ export default function StudentReportView({
     <ReportCardTemplate
       report={report}
       onPrint={() => window.print()}
-      onDownload={() => {
-        window.open(`/api/schools/${schoolId}/report-cards/student/${studentId}/pdf`);
+      onDownload={async () => {
+        try {
+          const res = await reportCardApi.downloadPdf(schoolId, studentId, termId);
+          const blob = new Blob([res.data], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${report?.student?.name || 'report-card'}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } catch {
+          // toast not imported here; silently fail or add import if needed
+        }
       }}
     />
   );

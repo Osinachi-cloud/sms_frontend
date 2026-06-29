@@ -9,7 +9,7 @@ import Link from 'next/link';
 import ParticleCanvas from '@/components/landing/ParticleCanvas';
 import OrbitalRings from '@/components/landing/OrbitalRings';
 import AliSimbiLogo from '@/components/landing/AliSimbiLogo';
-import { ThemeToggle } from '@/components/landing/ThemeToggle';
+import LandingNavbar from '@/components/landing/LandingNavbar';
 import { useTextScramble } from '@/components/landing/useTextScramble';
 import {
   Users, GraduationCap, BookOpen, CreditCard, BarChart3,
@@ -99,9 +99,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden transition-colors duration-500">
+      <LandingNavbar />
+
       {/* ========== HERO SECTION ========== */}
       <motion.section
-        className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
+        className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden -mt-[73px] pt-[73px]"
         style={{ opacity: heroOpacity, scale: heroScale }}
       >
         {/* Particle canvas background */}
@@ -126,33 +128,8 @@ export default function Home() {
         {/* Radial glow */}
         <div className="absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.06)_0%,_transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.08)_0%,_transparent_70%)]" />
 
-        {/* Navbar */}
-        <motion.nav
-          initial={{ y: -40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-12 py-4 sm:py-5"
-        >
-          <AliSimbiLogo size="md" animated />
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            <Link
-              href="/login"
-              className="px-3 py-2 text-xs sm:px-5 sm:py-2.5 sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-black/5 dark:hover:bg-white/5"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="px-3 py-2 text-xs sm:px-5 sm:py-2.5 sm:text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-purple-600 rounded-xl hover:shadow-lg hover:shadow-primary-500/25 transition-all hover:scale-105 whitespace-nowrap"
-            >
-              Get Started
-            </Link>
-          </div>
-        </motion.nav>
-
         {/* Hero Content */}
-        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto pt-20">
+        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto pt-12">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}

@@ -324,7 +324,7 @@ export default function TeachersPage() {
               {...register('email')}
               type="email"
               label="Email"
-              placeholder="[EMAIL_REDACTED]"
+              placeholder="cstemagic@gmail.com"
               error={errors.email?.message}
             />
             <Input

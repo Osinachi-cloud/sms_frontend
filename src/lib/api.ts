@@ -572,6 +572,11 @@ export const reportCardApi = {
     api.post(`/api/schools/${schoolId}/report-cards`, data),
   getStudentReport: (schoolId: string, studentId: string, termId?: string) =>
     api.get(`/api/schools/${schoolId}/report-cards/student/${studentId}/report`, { params: { termId } }),
+  downloadPdf: (schoolId: string, studentId: string, termId?: string) =>
+    api.get(`/api/schools/${schoolId}/report-cards/student/${studentId}/pdf`, {
+      params: { termId },
+      responseType: 'blob',
+    }),
 };
 
 export const schoolSettingsApi = {

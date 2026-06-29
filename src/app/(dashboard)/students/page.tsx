@@ -904,7 +904,7 @@ export default function StudentsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email</label>
-              <input value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} type="email" placeholder="[EMAIL_REDACTED]" className={`glass-input w-full ${editErrors.email ? 'border-red-500' : ''}`} />
+              <input value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} type="email" placeholder="cstemagic@gmail.com" className={`glass-input w-full ${editErrors.email ? 'border-red-500' : ''}`} />
               {editErrors.email && <p className="text-red-500 text-xs mt-1">{editErrors.email}</p>}
             </div>
             <div>

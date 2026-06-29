@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Undo, Redo, CheckCircle, Circle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import toast from "react-hot-toast";
 
 interface Quiz {
   id: string;
@@ -23,7 +22,6 @@ interface Component {
 export default function QuizSelectionManager({ classId, subjectId }: { classId: string; subjectId: string }) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [schemeComponents, setSchemeComponents] = useState<Component[]>([]);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (classId && subjectId) {
@@ -53,11 +51,11 @@ export default function QuizSelectionManager({ classId, subjectId }: { classId: 
         body: JSON.stringify({ class_id: classId, subject_id: subjectId, component_type: componentType, quiz_id: quizId }),
       });
       if (res.ok) {
-        toast({ title: "Selection Updated" });
+        toast.success("Selection Updated");
         fetchData();
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update selection", variant: "destructive" });
+      toast.error("Failed to update selection");
     }
   };
 
@@ -104,20 +102,16 @@ export default function QuizSelectionManager({ classId, subjectId }: { classId: 
                   </div>
                 </div>
                 <div className="flex gap-2 items-center">
-                  <Select 
-                    value={selectedQuiz?.id || "none"} 
-                    onValueChange={(val) => selectQuiz(comp.name, val === "none" ? null : val)}
+                  <select
+                    value={selectedQuiz?.id || "none"}
+                    onChange={(e) => selectQuiz(comp.name, e.target.value === "none" ? null : e.target.value)}
+                    className="w-[200px] px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
                   >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Select a quiz" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {typeQuizzes.map(q => (
-                        <SelectItem key={q.id} value={q.id}>{q.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="none">None</option>
+                    {typeQuizzes.map(q => (
+                      <option key={q.id} value={q.id}>{q.title}</option>
+                    ))}
+                  </select>
                   {selectedQuiz ? <CheckCircle className="text-green-500 w-5 h-5" /> : <Circle className="text-gray-300 w-5 h-5" />}
                 </div>
               </CardContent>

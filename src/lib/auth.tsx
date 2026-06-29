@@ -30,14 +30,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const MOCK_USERS: Record<string, User> = {
   'platform-admin': {
     id: 'u-admin',
-    email: '[EMAIL_REDACTED]',
+    email: 'cstemagic@gmail.com',
     fullName: 'Platform Admin',
     platformRole: 'APP_ADMIN',
     schools: [],
   },
   admin: {
     id: 'u-gf-admin',
-    email: '[EMAIL_REDACTED]',
+    email: 'cstemagic@gmail.com',
     fullName: 'Mrs. Folake Adeleke',
     platformRole: '',
     schools: [
@@ -104,7 +104,7 @@ const MOCK_USERS: Record<string, User> = {
   },
     parent: {
     id: 'u-parent-01',
-    email: '[EMAIL_REDACTED]',
+    email: 'cstemagic@gmail.com',
     fullName: 'Mrs Johnson',
     platformRole: '',
     children: [

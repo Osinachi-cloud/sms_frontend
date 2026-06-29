@@ -3,8 +3,8 @@
 import { useTheme } from '@/lib/theme';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import LandingNavbar from '@/components/landing/LandingNavbar';
 import AliSimbiLogo from '@/components/landing/AliSimbiLogo';
-import { ThemeToggle } from '@/components/landing/ThemeToggle';
 import {
   Shield,
   ArrowRight,
@@ -472,25 +472,10 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden transition-colors duration-500">
-      {/* Navbar */}
-      <motion.nav
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6 }}
-        className="sticky top-0 z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5"
-      >
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <AliSimbiLogo size="md" animated />
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <Link href="/" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors hidden sm:block">Home</Link>
-            <Link href="/login" className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 transition-colors">Sign In</Link>
-          </div>
-        </div>
-      </motion.nav>
+      <LandingNavbar />
 
       {/* ========== HERO ========== */}
-      <section className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28">
+      <section className="relative max-w-7xl mx-auto px-6 lg:px-12 lg:px-12 py-20 lg:py-28">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 text-primary-600 dark:text-primary-400 text-xs font-semibold mb-6">
@@ -549,7 +534,7 @@ export default function AboutPage() {
 
       {/* ========== STATS BAR ========== */}
       <section className="border-y border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-        <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat,i)=> (
               <motion.div key={stat.label} initial={{ opacity: 0, y:20 }} whileInView={{ opacity: 1, y:0 }} viewport={{ once: true }} transition={{ delay: i*0.1 }} className="text-center">
@@ -562,7 +547,7 @@ export default function AboutPage() {
       </section>
 
       {/* ========== CORE FEATURES SHOWCASE ========== */}
-      <section className="max-w-7xl mx-auto px-6 py-24">
+      <section className="max-w-7xl mx-auto px-6 lg:px-12 py-24">
         <motion.div initial={{ opacity: 0, y:20 }} whileInView={{ opacity: 1, y:0 }} viewport={{ once: true }} className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">See what Ali &amp; Simbi can do</h2>
           <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
@@ -626,7 +611,7 @@ export default function AboutPage() {
 
       {/* ========== MORE CAPABILITIES GRID ========== */}
       <section className="bg-slate-50/50 dark:bg-white/[0.02] py-24">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div initial={{ opacity: 0, y:20 }} whileInView={{ opacity: 1, y:0 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">And so much more</h2>
             <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
@@ -655,7 +640,7 @@ export default function AboutPage() {
       </section>
 
       {/* ========== VALUES ========== */}
-      <section className="max-w-7xl mx-auto px-6 py-24">
+      <section className="max-w-7xl mx-auto px-6 lg:px-12 py-24">
         <motion.div initial={{ opacity: 0, y:20 }} whileInView={{ opacity: 1, y:0 }} viewport={{ once: true }} className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">What drives us</h2>
           <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
@@ -684,7 +669,7 @@ export default function AboutPage() {
 
       {/* ========== SECURITY ========== */}
       <section className="bg-slate-50/50 dark:bg-white/[0.02] py-24">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <h2 className="text-3xl md:text-4xl font-bold mb-6">Your data is safe with us</h2>
@@ -721,7 +706,7 @@ export default function AboutPage() {
       </section>
 
       {/* ========== CTA ========== */}
-      <section className="max-w-7xl mx-auto px-6 pb-24">
+      <section className="max-w-7xl mx-auto px-6 lg:px-12 pb-24">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

@@ -424,7 +424,7 @@ export default function SchoolsPage() {
                   {...register('email')}
                   type="email"
                   label="School Email"
-                  placeholder="[EMAIL_REDACTED]"
+                  placeholder="cstemagic@gmail.com"
                   error={errors.email?.message}
                 />
                 <Input
@@ -469,7 +469,7 @@ export default function SchoolsPage() {
                   {...register('adminEmail')}
                   type="email"
                   label="Admin Email *"
-                  placeholder="[EMAIL_REDACTED]"
+                  placeholder="cstemagic@gmail.com"
                   error={errors.adminEmail?.message}
                 />
 
@@ -600,7 +600,7 @@ export default function SchoolsPage() {
               {...registerEdit('email')}
               type="email"
               label="School Email"
-              placeholder="[EMAIL_REDACTED]"
+              placeholder="cstemagic@gmail.com"
               error={editErrors.email?.message}
             />
             <Input
@@ -630,7 +630,7 @@ export default function SchoolsPage() {
               {...registerEdit('adminEmail')}
               type="email"
               label="Admin Email *"
-              placeholder="[EMAIL_REDACTED]"
+              placeholder="cstemagic@gmail.com"
               error={editErrors.adminEmail?.message}
             />
             <Input

@@ -384,7 +384,7 @@ export default function AdmissionsPage() {
                   <option value="OTHER">Other</option>
                 </select>
               </div>
-              <Input {...register('email')} type="email" label="Email" placeholder="[EMAIL_REDACTED]" error={errors.email?.message} />
+              <Input {...register('email')} type="email" label="Email" placeholder="cstemagic@gmail.com" error={errors.email?.message} />
               <Input {...register('phone')} label="Phone" placeholder="+234..." />
               <Input {...register('intendedClassName')} label="Intended Class" placeholder="e.g. JSS 1" />
               <Input {...register('previousSchool')} label="Previous School" placeholder="Name of previous school" />
@@ -413,7 +413,7 @@ export default function AdmissionsPage() {
                   <option value="OTHER">Other</option>
                 </select>
               </div>
-              <Input {...register('guardianEmail')} type="email" label="Guardian Email" placeholder="[EMAIL_REDACTED]" error={errors.guardianEmail?.message} />
+              <Input {...register('guardianEmail')} type="email" label="Guardian Email" placeholder="cstemagic@gmail.com" error={errors.guardianEmail?.message} />
               <Input {...register('guardianPhone')} label="Guardian Phone *" placeholder="+234..." error={errors.guardianPhone?.message} />
               <Input {...register('guardianPassword')} type="password" label="Guardian Password (optional)" placeholder="Set password for parent login" error={errors.guardianPassword?.message} />
               <div className="sm:col-span-2">
