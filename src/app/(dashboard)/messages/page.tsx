@@ -1,12 +1,13 @@
 'use client';
 
-import { messageApi } from '@/lib/api';
+import { messageApi, emailApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Send, User, Users, ChevronLeft, Plus, Search } from 'lucide-react';
+import { MessageSquare, Send, User, Users, ChevronLeft, Plus, Search, Mail, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import toast from 'react-hot-toast';
 
 export default function MessagesPage() {
   const { currentSchool, user } = useAuth();
@@ -15,6 +16,13 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showNewConv, setShowNewConv] = useState(false);
+
+  // Broadcast email state
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastSubject, setBroadcastSubject] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [broadcastRecipients, setBroadcastRecipients] = useState('');
+  const [broadcasting, setBroadcasting] = useState(false);
 
   // Demo data for now
   const demoConversations = [
@@ -53,6 +61,38 @@ export default function MessagesPage() {
     setNewMessage('');
   };
 
+  const handleBroadcast = async () => {
+    if (!broadcastSubject.trim() || !broadcastBody.trim()) {
+      toast.error('Subject and message are required');
+      return;
+    }
+    const emails = broadcastRecipients
+      .split(/[,\n]/)
+      .map((e) => e.trim())
+      .filter((e) => e.length > 0);
+    if (emails.length === 0) {
+      toast.error('Add at least one recipient email');
+      return;
+    }
+    try {
+      setBroadcasting(true);
+      await emailApi.broadcast(currentSchool?.id || '', {
+        recipients: emails,
+        subject: broadcastSubject,
+        htmlBody: broadcastBody,
+      });
+      toast.success(`Broadcast queued for ${emails.length} recipient(s)`);
+      setShowBroadcast(false);
+      setBroadcastSubject('');
+      setBroadcastBody('');
+      setBroadcastRecipients('');
+    } catch {
+      toast.error('Failed to send broadcast email');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col -mx-4 sm:-mx-6 -mt-4 sm:-mt-6" data-tour="messages">
       <div className="flex-1 flex overflow-hidden">
@@ -60,9 +100,14 @@ export default function MessagesPage() {
         <div className={`${activeConv ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-col border-r border-white/20 dark:border-slate-700/50 glass`}>
           <div className="p-4 border-b border-white/20 dark:border-slate-700/50 flex items-center justify-between">
             <h2 className="font-semibold">Messages</h2>
-            <button onClick={() => setShowNewConv(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <Plus className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setShowBroadcast(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Broadcast Email">
+                <Mail className="w-4 h-4" />
+              </button>
+              <button onClick={() => setShowNewConv(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="New Conversation">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-auto p-2 space-y-1">
             {conversations.map((conv) => (
@@ -153,6 +198,7 @@ export default function MessagesPage() {
         </div>
       </div>
 
+      {/* New Conversation Modal */}
       <Modal isOpen={showNewConv} onClose={() => setShowNewConv(false)} title="New Conversation" size="sm">
         <div className="space-y-4">
           <input className="glass-input w-full" placeholder="Search users..." />
@@ -164,6 +210,60 @@ export default function MessagesPage() {
                 <span className="text-sm">{name}</span>
               </button>
             ))}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Broadcast Email Modal */}
+      <Modal isOpen={showBroadcast} onClose={() => setShowBroadcast(false)} title="Broadcast Email" size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Subject</label>
+            <input
+              type="text"
+              value={broadcastSubject}
+              onChange={(e) => setBroadcastSubject(e.target.value)}
+              placeholder="e.g. PTA Meeting Announcement"
+              className="glass-input w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Recipients <span className="text-xs text-slate-400 font-normal">(comma or newline separated)</span>
+            </label>
+            <textarea
+              value={broadcastRecipients}
+              onChange={(e) => setBroadcastRecipients(e.target.value)}
+              placeholder="parent1@email.com, parent2@email.com"
+              rows={3}
+              className="glass-input w-full resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message (HTML supported)</label>
+            <textarea
+              value={broadcastBody}
+              onChange={(e) => setBroadcastBody(e.target.value)}
+              placeholder="Type your broadcast message..."
+              rows={6}
+              className="glass-input w-full resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setShowBroadcast(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBroadcast} disabled={broadcasting}>
+              {broadcasting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4 mr-2" />
+              )}
+              {broadcasting ? 'Sending...' : 'Send Broadcast'}
+            </Button>
           </div>
         </div>
       </Modal>

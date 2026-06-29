@@ -854,4 +854,9 @@ export const holidayApi = {
   },
 };
 
+export const emailApi = {
+  broadcast: (schoolId: string, data: { recipients: string[]; subject: string; htmlBody: string }) =>
+    api.post(`/api/schools/${schoolId}/email/broadcast`, data),
+};
+
 export default api;
