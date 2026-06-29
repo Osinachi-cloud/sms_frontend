@@ -570,6 +570,13 @@ export const reportCardApi = {
     api.get(`/api/schools/any/report-cards/student/${studentId}`, { params }),
   generate: (schoolId: string, data: any) =>
     api.post(`/api/schools/${schoolId}/report-cards`, data),
+  getStudentReport: (schoolId: string, studentId: string, termId?: string) =>
+    api.get(`/api/schools/${schoolId}/report-cards/student/${studentId}/report`, { params: { termId } }),
+};
+
+export const schoolSettingsApi = {
+  get: (schoolId: string) => api.get(`/api/schools/${schoolId}/settings`),
+  update: (schoolId: string, data: any) => api.put(`/api/schools/${schoolId}/settings`, data),
 };
 
 export const idCardApi = {

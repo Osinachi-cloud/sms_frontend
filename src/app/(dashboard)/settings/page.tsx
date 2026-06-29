@@ -33,8 +33,6 @@ export default function SettingsPage() {
 
   // Branding is editable only by admins or users with a temporary school.update permission
   const canManageBranding = isAdminOrPlatform || hasTemporaryPermission('school.update');
-  // Grading scale is editable only by admins or users with a temporary student.grades.manage permission
-  const canManageGrading = isAdminOrPlatform || hasTemporaryPermission('student.grades.manage');
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -82,14 +80,7 @@ export default function SettingsPage() {
     twoFactorEnabled: false,
   });
 
-  // Grading scale
-  const [gradingScale, setGradingScale] = useState([
-    { min: 70, max: 100, grade: 'A', remarks: 'Excellent' },
-    { min: 60, max: 69, grade: 'B', remarks: 'Good' },
-    { min: 50, max: 59, grade: 'C', remarks: 'Fair' },
-    { min: 40, max: 49, grade: 'D', remarks: 'Pass' },
-    { min: 0, max: 39, grade: 'F', remarks: 'Fail' },
-  ]);
+
 
   useEffect(() => {
     if (currentSchool?.id) {
@@ -136,7 +127,6 @@ export default function SettingsPage() {
         accentColor: schoolBranding.accentColor,
         currency: schoolBranding.currency,
         timezone: schoolBranding.timezone,
-        gradingScale,
       });
       applyColors({
         primaryColor: schoolBranding.primaryColor,
@@ -189,12 +179,6 @@ export default function SettingsPage() {
   const handleColorChange = (field: 'primaryColor' | 'secondaryColor' | 'accentColor', color: string) => {
     setSchoolBranding((prev) => ({ ...prev, [field]: color }));
     applyColors({ [field]: color });
-  };
-
-  const handleGradingChange = (index: number, field: string, value: string | number) => {
-    const updated = [...gradingScale];
-    (updated[index] as any)[field] = typeof value === 'string' && field !== 'remarks' && field !== 'grade' ? Number(value) : value;
-    setGradingScale(updated);
   };
 
   const tabs = [
@@ -570,65 +554,6 @@ export default function SettingsPage() {
           </Card>
 
           {/* Grading Scale */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-                  <Award className="w-5 h-5 text-white" />
-                </div>
-                <CardTitle>Grading Scale</CardTitle>
-                {!canManageGrading && (
-                  <span className="ml-auto text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">
-                    Read-only
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {gradingScale.map((item, index) => (
-                  <div key={item.grade} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {item.grade}
-                    </div>
-                    <div className="flex-1 grid grid-cols-3 gap-2">
-                      <input
-                        type="number"
-                        value={item.min}
-                        onChange={(e) => canManageGrading && handleGradingChange(index, 'min', e.target.value)}
-                        className={`glass-input py-2 text-sm ${!canManageGrading ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
-                        min={0}
-                        max={100}
-                        readOnly={!canManageGrading}
-                      />
-                      <input
-                        type="number"
-                        value={item.max}
-                        onChange={(e) => canManageGrading && handleGradingChange(index, 'max', e.target.value)}
-                        className={`glass-input py-2 text-sm ${!canManageGrading ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
-                        min={0}
-                        max={100}
-                        readOnly={!canManageGrading}
-                      />
-                      <input
-                        type="text"
-                        value={item.remarks}
-                        onChange={(e) => canManageGrading && handleGradingChange(index, 'remarks', e.target.value)}
-                        className={`glass-input py-2 text-sm ${!canManageGrading ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
-                        placeholder="Remarks"
-                        readOnly={!canManageGrading}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {canManageGrading && (
-                <Button variant="secondary" className="mt-4" size="sm" onClick={handleSaveBranding} isLoading={isSaving}>
-                  Save Grading Scale
-                </Button>
-              )}
-            </CardContent>
-          </Card>
         </motion.div>
       )}
 
