@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
   Printer,
   Download,
@@ -18,6 +18,7 @@ import {
   XCircle,
   AlertCircle,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -91,6 +92,28 @@ interface ReportCardTemplateProps {
 }
 
 export default function ReportCardTemplate({ report, onPrint, onDownload }: ReportCardTemplateProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    if (!reportRef.current) return;
+    setDownloading(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const studentName = report?.student?.name || "report-card";
+      const opt = {
+        margin: [10, 10, 10, 10] as [number, number, number, number],
+        filename: `${studentName}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+      };
+      await html2pdf().set(opt).from(reportRef.current).save();
+    } finally {
+      setDownloading(false);
+    }
+  }, [report]);
+
   if (!report) return null;
 
   const school = report.school || {};
@@ -148,14 +171,19 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
           <Button variant="outline" onClick={onPrint}>
             <Printer className="w-4 h-4 mr-2" /> Print
           </Button>
-          <Button onClick={onDownload}>
-            <Download className="w-4 h-4 mr-2" /> Download PDF
+          <Button onClick={onDownload || handleDownload} disabled={downloading}>
+            {downloading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {downloading ? "Generating..." : "Download PDF"}
           </Button>
         </div>
       </div>
 
       {/* Report Card Paper */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-none print:rounded-none">
+      <div ref={reportRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-none print:rounded-none">
         {/* Header Banner — uses school's custom branding colors */}
         <div
           className="relative text-white px-8 py-8"

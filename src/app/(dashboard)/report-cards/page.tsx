@@ -44,31 +44,6 @@ export default function ReportCardsPage() {
   };
 
   const handlePrint = () => window.print();
-  const handleDownload = async () => {
-    if (!generatedReport?.student?.id) {
-      toast.error('No report to download');
-      return;
-    }
-    try {
-      const res = await reportCardApi.downloadPdf(
-        currentSchool?.id || '',
-        generatedReport.student.id,
-        generatedReport.term?.id
-      );
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${generatedReport.student.name || 'report-card'}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      toast.success('PDF downloaded');
-    } catch {
-      toast.error('Failed to download PDF');
-    }
-  };
 
   return (
     <div className="space-y-4 sm:space-y-6" data-tour="report-cards">
@@ -93,7 +68,6 @@ export default function ReportCardsPage() {
           <ReportCardTemplate
             report={generatedReport}
             onPrint={handlePrint}
-            onDownload={handleDownload}
           />
         </motion.div>
       )}
