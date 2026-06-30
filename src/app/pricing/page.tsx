@@ -53,7 +53,7 @@ const plans = [
       'Online payments & invoicing',
       'Report cards & gradebook',
       'Parent portal',
-      // 'AI Tutor integration',
+      // 'AI Tutor integration',  
       'Attendance tracking',
       'Priority support',
     ],
@@ -152,6 +152,7 @@ export default function PricingPage() {
                   Most Popular
                 </div>
               )}
+              
 
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-5`}>
                 <plan.icon className="w-6 h-6 text-white" />

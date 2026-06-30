@@ -3,7 +3,7 @@ import { AuthResponse } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
 
-// Render free tier needs up to 60s to cold-start. Local dev stays snappy.
+// Render free tier needs up to 60s to cold-start. Local dev stays snappy. Thank you Jesus
 const isProduction = typeof window !== 'undefined'
   ? !window.location.hostname.includes('localhost')
   : API_BASE_URL !== 'http://localhost:8081';
