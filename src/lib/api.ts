@@ -174,6 +174,14 @@ export const studentApi = {
 
   delete: (schoolId: string, studentId: string) =>
     api.delete(`/api/schools/${schoolId}/students/${studentId}`),
+
+  uploadPhoto: (schoolId: string, studentId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post(`/api/schools/${schoolId}/students/${studentId}/photo`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
 
 export const teacherApi = {

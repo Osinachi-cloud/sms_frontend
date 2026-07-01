@@ -4,25 +4,13 @@ import React, { useRef, useState, useCallback } from "react";
 import {
   Printer,
   Download,
-  MapPin,
-  Phone,
-  Mail,
-  GraduationCap,
-  Calendar,
-  Award,
-  BookOpen,
-  User,
-  School,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  TrendingUp,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { reportCardApi } from "@/lib/api";
 import toast from "react-hot-toast";
+
+const DARK_BLUE = "#0b1d3a";
 
 function resolveGrade(total: number | null, gradingScale: any[]): string {
   if (total === null || total === undefined) return "-";
@@ -37,36 +25,6 @@ function resolveGrade(total: number | null, gradingScale: any[]): string {
   return "F";
 }
 
-function gradeColor(grade: string): string {
-  switch (grade) {
-    case "A":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
-    case "B":
-      return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800";
-    case "C":
-      return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
-    case "D":
-      return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800";
-    default:
-      return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800";
-  }
-}
-
-function gradeBg(grade: string): string {
-  switch (grade) {
-    case "A":
-      return "bg-emerald-50 dark:bg-emerald-950/30";
-    case "B":
-      return "bg-blue-50 dark:bg-blue-950/30";
-    case "C":
-      return "bg-amber-50 dark:bg-amber-950/30";
-    case "D":
-      return "bg-orange-50 dark:bg-orange-950/30";
-    default:
-      return "bg-red-50 dark:bg-red-950/30";
-  }
-}
-
 function getRatingLabel(rating: any): string {
   if (rating === null || rating === undefined) return "-";
   const n = Number(rating);
@@ -75,16 +33,6 @@ function getRatingLabel(rating: any): string {
   if (n >= 60) return "Good";
   if (n >= 50) return "Fair";
   return "Poor";
-}
-
-function getRatingColor(rating: any): string {
-  if (rating === null || rating === undefined) return "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500";
-  const n = Number(rating);
-  if (n >= 80) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-  if (n >= 70) return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-  if (n >= 60) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  if (n >= 50) return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
-  return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
 }
 
 interface ReportCardTemplateProps {
@@ -105,15 +53,6 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
     }
 
     const html = reportRef.current.outerHTML;
-    const styles = Array.from(document.styleSheets)
-      .map((sheet) => {
-        try {
-          return Array.from(sheet.cssRules).map((r) => r.cssText).join("\n");
-        } catch {
-          return "";
-        }
-      })
-      .join("\n");
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -121,19 +60,15 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
         <head>
           <title>Report Card - ${report?.student?.name || "Student"}</title>
           <style>
-            ${styles}
-            @media print {
-              body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            }
-            body { font-family: system-ui, -apple-system, sans-serif; background: white; }
+            @page { size: A4 portrait; margin: 10mm; }
+            body { margin: 0; padding: 0; background: #fff; font-family: system-ui, -apple-system, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            table { border-collapse: collapse; width: 100%; }
+            td, th { vertical-align: middle; }
           </style>
-          <script src="https://cdn.tailwindcss.com"></script>
         </head>
-        <body class="bg-white p-0">
-          <div class="max-w-[210mm] mx-auto">
-            ${html}
-          </div>
+        <body style="background:#fff;">
+          ${html}
         </body>
       </html>
     `);
@@ -142,14 +77,14 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 800);
+    }, 600);
   }, [report]);
 
   const handleDownload = useCallback(async () => {
     const studentId = report?.student?.id;
     const termId = report?.term?.id;
 
-    // Prefer backend PDF endpoint for best quality
+    // Prefer backend PDF endpoint
     if (schoolId && studentId) {
       setDownloading(true);
       try {
@@ -165,32 +100,41 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
         window.URL.revokeObjectURL(url);
         toast.success("PDF downloaded");
         return;
-      } catch {
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || "Unknown error";
+        console.error("Backend PDF error:", msg, err);
         toast.error("Backend PDF failed, trying local generation...");
+      } finally {
+        setDownloading(false);
       }
     }
 
     // Fallback: html2pdf.js
-    if (!reportRef.current) return;
+    if (!reportRef.current) {
+      toast.error("Nothing to download");
+      return;
+    }
     setDownloading(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const studentName = report?.student?.name || "report-card";
       const opt = {
-        margin: [8, 8, 8, 8] as [number, number, number, number],
+        margin: [10, 10, 10, 10] as [number, number, number, number],
         filename: `${studentName}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
-          scale: 3,
+          scale: 2,
           useCORS: true,
           backgroundColor: "#ffffff",
-          windowWidth: 1200,
+          windowWidth: 794,
         },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] as any },
       };
       await html2pdf().set(opt).from(reportRef.current).save();
       toast.success("PDF downloaded");
-    } catch {
+    } catch (err: any) {
+      console.error("Local PDF error:", err);
       toast.error("Failed to generate PDF");
     } finally {
       setDownloading(false);
@@ -209,9 +153,6 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
   const overallAverage = report.overall_average;
   const overallGrade = report.overall_grade;
 
-  const primaryColor = school.primaryColor || "#3b82f6";
-  const secondaryColor = school.secondaryColor || "#8b5cf6";
-
   const gradingScale = report.grading_scale || [
     { grade: "A", minScore: 70, maxScore: 100, label: "Excellent" },
     { grade: "B", minScore: 60, maxScore: 69, label: "Very Good" },
@@ -229,10 +170,10 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
   );
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-[210mm] mx-auto">
       {/* Actions Bar */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Report Card</h2>
+        <h2 className="text-xl font-bold text-slate-900">Report Card</h2>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" /> Print
@@ -248,332 +189,260 @@ export default function ReportCardTemplate({ report, schoolId }: ReportCardTempl
         </div>
       </div>
 
-      {/* Report Card Paper */}
-      <div ref={reportRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-        {/* Header Banner */}
-        <div
-          className="relative text-white px-8 py-8"
-          style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
-        >
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-          </div>
-          <div className="relative flex items-center gap-6">
-            <div className="w-20 h-20 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center border border-white/25 shrink-0">
-              {school.logoUrl ? (
-                <img src={school.logoUrl} alt="School Logo" className="w-16 h-16 object-contain" />
-              ) : (
-                <School className="w-10 h-10 text-white/90" />
-              )}
-            </div>
-            <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                {school.name || "School Name"}
-              </h1>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-white/80">
-                {school.address && (
-                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {school.address}</span>
+      {/* Report Card Paper - always light mode, no dark classes */}
+      <div
+        ref={reportRef}
+        className="bg-white text-black"
+        style={{ maxWidth: "210mm", fontSize: "9px", lineHeight: 1.35, fontFamily: "'Segoe UI', Arial, sans-serif" }}
+      >
+        {/* ===== HEADER ===== */}
+        <table style={{ width: "100%", borderCollapse: "collapse", background: DARK_BLUE, color: "#fff" }}>
+          <tbody>
+            <tr>
+              <td style={{ padding: "12px 14px" }}>
+                <p style={{ margin: 0, fontSize: "17px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {school.name || "School Name"}
+                </p>
+                <p style={{ margin: "2px 0 0 0", fontSize: "8px", opacity: 0.85 }}>
+                  {school.address || ""} {school.address && "\u2022"} Tel: {school.phone || ""} {school.phone && "\u2022"} Email: {school.email || ""}
+                </p>
+              </td>
+              <td style={{ padding: "12px 14px", textAlign: "right" }}>
+                <p style={{ margin: 0, fontSize: "7px", textTransform: "uppercase", letterSpacing: "2px", opacity: 0.7, fontWeight: 700 }}>Academic Report</p>
+                <p style={{ margin: "2px 0 0 0", fontSize: "12px", fontWeight: 700 }}>{term.name || "Current Term"}</p>
+                <p style={{ margin: "2px 0 0 0", fontSize: "8px", opacity: 0.85 }}>{term.session_name || ""}</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ===== STUDENT INFO ===== */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "8px" }}>
+          <tbody>
+            <tr>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.5px", background: "#f5f7fa", width: "18%" }}>Student Name</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 600, fontSize: "9px" }}>{student.name || "-"}</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.5px", background: "#f5f7fa", width: "18%" }}>Admission No</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 600, fontSize: "9px" }}>{student.admission_number || "-"}</td>
+            </tr>
+            <tr>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.5px", background: "#f5f7fa" }}>Class</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 600, fontSize: "9px" }}>{student.class_name || "-"}</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.5px", background: "#f5f7fa" }}>Gender</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 600, fontSize: "9px" }}>{student.gender || "-"}</td>
+            </tr>
+            <tr>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.5px", background: "#f5f7fa" }}>Date of Birth</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 600, fontSize: "9px" }}>{student.date_of_birth || "-"}</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.5px", background: "#f5f7fa" }}>Class Teacher</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 600, fontSize: "9px" }}>{student.class_teacher_name || "-"}</td>
+            </tr>
+            <tr style={{ background: "#f5f7fa" }}>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.5px", color: DARK_BLUE }}>Overall Average</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 900, fontSize: "15px", color: DARK_BLUE }}>{overallAverage !== null && overallAverage !== undefined ? overallAverage : "-"}%</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px", fontWeight: 700, fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.5px", color: DARK_BLUE }}>Overall Grade</td>
+              <td style={{ border: "1px solid #000", padding: "5px 8px" }}>
+                {overallGrade ? (
+                  <span style={{ display: "inline-block", width: 22, height: 22, fontSize: "10px", fontWeight: 900, lineHeight: "22px", textAlign: "center", background: DARK_BLUE, color: "#fff" }}>{overallGrade}</span>
+                ) : (
+                  <span style={{ fontWeight: 600, fontSize: "9px" }}>-</span>
                 )}
-                {school.phone && (
-                  <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {school.phone}</span>
-                )}
-                {school.email && (
-                  <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {school.email}</span>
-                )}
-              </div>
-            </div>
-            <div className="hidden sm:block text-right">
-              <div className="text-xs uppercase tracking-wider text-white/60 font-semibold">Academic Report</div>
-              <div className="text-lg font-bold">{term.name || "Current Term"}</div>
-              {term.session_name && <div className="text-sm text-white/70">{term.session_name}</div>}
-            </div>
-          </div>
-        </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-        {/* Grading Scale Strip */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 px-8 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Grading Scale:</span>
-            {gradingScale.map((entry: any, idx: number) => (
-              <span
-                key={idx}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${gradeColor(entry.grade)}`}
-              >
-                {entry.grade}: {entry.minScore}-{entry.maxScore}% {entry.label ? `(${entry.label})` : ""}
-              </span>
-            ))}
-          </div>
-        </div>
+        {/* ===== GRADING SCALE ===== */}
+        <p style={{ margin: "6px 0 0 0", padding: "3px 0", borderBottom: "1px solid #000", fontSize: "8px", fontWeight: 600 }}>
+          <span style={{ fontWeight: 700, color: DARK_BLUE, marginRight: "6px" }}>Grading Scale:</span>
+          {gradingScale.map((entry: any, idx: number) => (
+            <span key={idx} style={{ marginRight: "10px" }}>
+              {entry.grade}: {entry.minScore}-{entry.maxScore}% ({entry.label})
+            </span>
+          ))}
+        </p>
 
-        {/* Student Info Section */}
-        <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700">
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-6">
-            <div className="sm:col-span-2 flex flex-col items-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-3xl font-bold text-slate-500 border-4 border-white dark:border-slate-800 shadow-lg">
-                {student.name?.charAt(0) || "?"}
-              </div>
-              <div className="mt-2 text-center">
-                <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Student</div>
-              </div>
-            </div>
-
-            <div className="sm:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div className="space-y-2">
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Full Name</span>
-                  <p className="font-semibold text-slate-900 dark:text-white text-base">{student.name || "-"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Admission Number</span>
-                  <p className="font-medium text-slate-700 dark:text-slate-300">{student.admission_number || "-"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Class</span>
-                  <p className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-                    {student.class_name || "-"}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Gender</span>
-                  <p className="font-medium text-slate-700 dark:text-slate-300">{student.gender || "-"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Date of Birth</span>
-                  <p className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    {student.date_of_birth || "-"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Class Teacher</span>
-                  <p className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    {student.class_teacher_name || "-"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="sm:col-span-4">
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-3 text-center">Overall Performance</div>
-                <div className="flex items-center justify-around">
-                  <div className="text-center">
-                    <div className="text-3xl font-black text-slate-900 dark:text-white">
-                      {overallAverage !== null && overallAverage !== undefined ? overallAverage : "-"}
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide mt-0.5">Average (%)</div>
-                  </div>
-                  <div className="h-10 w-px bg-slate-200 dark:bg-slate-700" />
-                  <div className="text-center">
-                    {overallGrade ? (
-                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl text-xl font-black border-2 ${gradeColor(overallGrade)}`}>
-                        {overallGrade}
-                      </div>
-                    ) : (
-                      <div className="text-3xl font-black text-slate-300">-</div>
-                    )}
-                    <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide mt-0.5">Grade</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Academic Performance */}
-        <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Academic Performance</h3>
-          </div>
-
-          {subjects.length > 0 ? (
-            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider">Subject</th>
-                    {allComponentNames.map((name, i) => (
-                      <th key={i} className="text-center py-3 px-3 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider whitespace-nowrap">
-                        {name}
-                        <span className="block text-[10px] font-normal text-slate-400 normal-case">(Score / Weight)</span>
-                      </th>
-                    ))}
-                    <th className="text-center py-3 px-3 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider whitespace-nowrap">Total</th>
-                    <th className="text-center py-3 px-4 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider">Grade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subjects.map((sub: any, idx: number) => {
-                    const total = sub.total ?? null;
-                    const isComplete = sub.total_complete === true;
-                    const grade = resolveGrade(total, gradingScale);
+        {/* ===== ACADEMIC PERFORMANCE ===== */}
+        <p style={{ margin: "10px 0 5px 0", fontSize: "8px", fontWeight: 700, color: DARK_BLUE, textTransform: "uppercase", letterSpacing: "1px", borderBottom: `1.5px solid ${DARK_BLUE}`, paddingBottom: "3px" }}>
+          Academic Performance
+        </p>
+        <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #000" }}>
+          <thead>
+            <tr style={{ background: DARK_BLUE, color: "#fff" }}>
+              <th style={{ border: `1px solid ${DARK_BLUE}`, padding: "5px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "left" }}>Subject</th>
+              {allComponentNames.map((name, i) => (
+                <th key={i} style={{ border: `1px solid ${DARK_BLUE}`, padding: "5px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "center" }}>{name}</th>
+              ))}
+              <th style={{ border: `1px solid ${DARK_BLUE}`, padding: "5px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "center" }}>Total</th>
+              <th style={{ border: `1px solid ${DARK_BLUE}`, padding: "5px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "center" }}>Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {subjects.map((sub: any, idx: number) => {
+              const total = sub.total ?? null;
+              const grade = resolveGrade(total, gradingScale);
+              return (
+                <tr key={idx} style={idx % 2 === 1 ? { background: "#f9fafb" } : {}}>
+                  <td style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px", fontWeight: 600, textAlign: "left" }}>{sub.subject_name || "-"}</td>
+                  {allComponentNames.map((name, i) => {
+                    const comp = (sub.components || []).find((c: any) => c.component_name === name);
                     return (
-                      <tr
-                        key={idx}
-                        className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${gradeBg(grade)}`}
-                      >
-                        <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{sub.subject_name || "-"}</td>
-                        {allComponentNames.map((name, i) => {
-                          const comp = (sub.components || []).find((c: any) => c.component_name === name);
-                          return (
-                            <td key={i} className="py-3 px-3 text-center text-slate-600 dark:text-slate-300">
-                              {comp ? (
-                                <span>
-                                  <span className="font-semibold text-slate-800 dark:text-slate-200">{comp.score === null || comp.score === undefined ? "..." : comp.score}</span>
-                                  <span className="text-slate-400 text-xs"> / {comp.weight}</span>
-                                </span>
-                              ) : (
-                                <span className="text-slate-300">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="py-3 px-3 text-center">
-                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{total !== null && total !== undefined ? total : "..."}</span>
-                          {!isComplete && total !== null && (
-                            <span className="block text-[9px] text-amber-500 font-semibold uppercase tracking-wide mt-0.5">Partial</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {grade !== "-" ? (
-                            <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border ${gradeColor(grade)}`}>{grade}</span>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
-                        </td>
-                      </tr>
+                      <td key={i} style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px", textAlign: "center" }}>
+                        {comp ? (
+                          <span>
+                            <strong>{comp.score === null || comp.score === undefined ? "-" : comp.score}</strong>
+                            <span style={{ color: "#666", fontSize: "8px" }}> /{comp.weight}</span>
+                          </span>
+                        ) : (
+                          <span style={{ color: "#999" }}>-</span>
+                        )}
+                      </td>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-              <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm text-slate-500">No subject results available.</p>
-            </div>
-          )}
-        </div>
+                  <td style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px", textAlign: "center", fontWeight: 700 }}>{total !== null && total !== undefined ? total : "-"}</td>
+                  <td style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px", textAlign: "center", fontWeight: 700 }}>{grade}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-        {/* Affective Domain & Attendance Grid */}
-        <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <div className="flex items-center gap-2 mb-3">
-                <Award className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Affective Domain</h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {affective.map((item: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                  >
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{item.trait}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {item.rating ? (
-                        <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${getRatingColor(item.rating)}`}>
-                          {item.rating}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-300">-</span>
-                      )}
-                      <span className={`text-[10px] font-medium w-16 text-right ${item.rating ? "text-slate-600 dark:text-slate-300" : "text-slate-300"}`}>
-                        {getRatingLabel(item.rating)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        {/* ===== AFFECTIVE + ATTENDANCE ===== */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+          <tbody>
+            <tr>
+              {/* Affective */}
+              <td style={{ width: "55%", paddingRight: "8px", verticalAlign: "top" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "7px", fontWeight: 700, color: DARK_BLUE, textTransform: "uppercase", letterSpacing: "1px", borderBottom: `1px solid ${DARK_BLUE}`, paddingBottom: "2px" }}>
+                  Affective Domain
+                </p>
+                {affective.length > 0 ? (
+                  <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #000" }}>
+                    <thead>
+                      <tr style={{ background: "#f5f7fa" }}>
+                        <th style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", textAlign: "left" }}>Trait</th>
+                        <th style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", textAlign: "center" }}>Rating</th>
+                        <th style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", textAlign: "center" }}>Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {affective.map((item: any, idx: number) => (
+                        <tr key={idx}>
+                          <td style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px" }}>{item.trait}</td>
+                          <td style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px", textAlign: "center" }}>{item.rating !== null && item.rating !== undefined ? item.rating : "-"}</td>
+                          <td style={{ border: "1px solid #000", padding: "4px 7px", fontSize: "8.5px", textAlign: "center" }}>{getRatingLabel(item.rating)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p style={{ margin: 0, fontSize: "8px", padding: "6px", border: "1px solid #000", color: "#555" }}>No affective ratings available.</p>
+                )}
+              </td>
 
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Clock className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Attendance Summary</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 rounded-xl p-2.5 text-center">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto mb-0.5" />
-                  <div className="text-lg font-black text-emerald-700 dark:text-emerald-400">{attendance.present ?? 0}</div>
-                  <div className="text-[10px] font-semibold text-emerald-600/80 uppercase tracking-wide">Present</div>
-                </div>
-                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl p-2.5 text-center">
-                  <XCircle className="w-4 h-4 text-red-600 mx-auto mb-0.5" />
-                  <div className="text-lg font-black text-red-700 dark:text-red-400">{attendance.absent ?? 0}</div>
-                  <div className="text-[10px] font-semibold text-red-600/80 uppercase tracking-wide">Absent</div>
-                </div>
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 text-center">
-                  <AlertCircle className="w-4 h-4 text-amber-600 mx-auto mb-0.5" />
-                  <div className="text-lg font-black text-amber-700 dark:text-amber-400">{attendance.late ?? 0}</div>
-                  <div className="text-[10px] font-semibold text-amber-600/80 uppercase tracking-wide">Late</div>
-                </div>
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded-xl p-2.5 text-center">
-                  <TrendingUp className="w-4 h-4 text-blue-600 mx-auto mb-0.5" />
-                  <div className="text-lg font-black text-blue-700 dark:text-blue-400">{attendance.percentage ?? 0}%</div>
-                  <div className="text-[10px] font-semibold text-blue-600/80 uppercase tracking-wide">Attendance</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+              {/* Attendance */}
+              <td style={{ width: "45%", verticalAlign: "top" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "7px", fontWeight: 700, color: DARK_BLUE, textTransform: "uppercase", letterSpacing: "1px", borderBottom: `1px solid ${DARK_BLUE}`, paddingBottom: "2px" }}>
+                  Attendance Summary
+                </p>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "3px" }}>
+                        <p style={{ margin: 0, border: "1px solid #000", textAlign: "center", padding: "6px 4px" }}>
+                          <span style={{ fontSize: "13px", fontWeight: 900, color: DARK_BLUE }}>{attendance.present ?? 0}</span>
+                          <br />
+                          <span style={{ fontSize: "7px", fontWeight: 700, textTransform: "uppercase", color: "#333" }}>Present</span>
+                        </p>
+                      </td>
+                      <td style={{ padding: "3px" }}>
+                        <p style={{ margin: 0, border: "1px solid #000", textAlign: "center", padding: "6px 4px" }}>
+                          <span style={{ fontSize: "13px", fontWeight: 900, color: DARK_BLUE }}>{attendance.absent ?? 0}</span>
+                          <br />
+                          <span style={{ fontSize: "7px", fontWeight: 700, textTransform: "uppercase", color: "#333" }}>Absent</span>
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "3px" }}>
+                        <p style={{ margin: 0, border: "1px solid #000", textAlign: "center", padding: "6px 4px" }}>
+                          <span style={{ fontSize: "13px", fontWeight: 900, color: DARK_BLUE }}>{attendance.late ?? 0}</span>
+                          <br />
+                          <span style={{ fontSize: "7px", fontWeight: 700, textTransform: "uppercase", color: "#333" }}>Late</span>
+                        </p>
+                      </td>
+                      <td style={{ padding: "3px" }}>
+                        <p style={{ margin: 0, border: "1px solid #000", textAlign: "center", padding: "6px 4px" }}>
+                          <span style={{ fontSize: "13px", fontWeight: 900, color: DARK_BLUE }}>{attendance.percentage ?? 0}%</span>
+                          <br />
+                          <span style={{ fontSize: "7px", fontWeight: 700, textTransform: "uppercase", color: "#333" }}>Attendance</span>
+                        </p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-        {/* Comments */}
-        <div className="px-8 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <User className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide">Teacher&apos;s Comment</h4>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 min-h-[80px]">
-                <p className="text-sm text-slate-700 dark:text-slate-300 italic">{report.teacher_comment || "No comment provided."}</p>
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <School className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide">Principal&apos;s Comment</h4>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 min-h-[80px]">
-                <p className="text-sm text-slate-700 dark:text-slate-300 italic">{report.principal_comment || "No comment provided."}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* ===== COMMENTS ===== */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+          <tbody>
+            <tr>
+              <td style={{ width: "50%", paddingRight: "6px", verticalAlign: "top" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "7px", fontWeight: 700, color: DARK_BLUE, textTransform: "uppercase", letterSpacing: "1px", borderBottom: `1px solid ${DARK_BLUE}`, paddingBottom: "2px" }}>
+                  Teacher&apos;s Comment
+                </p>
+                <p style={{ margin: 0, border: "1px solid #000", padding: "8px 10px", fontSize: "8.5px", color: "#222", fontStyle: "italic", minHeight: 36, background: "#fff" }}>
+                  {report.teacher_comment || "No comment provided."}
+                </p>
+              </td>
+              <td style={{ width: "50%", paddingLeft: "6px", verticalAlign: "top" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "7px", fontWeight: 700, color: DARK_BLUE, textTransform: "uppercase", letterSpacing: "1px", borderBottom: `1px solid ${DARK_BLUE}`, paddingBottom: "2px" }}>
+                  Principal&apos;s Comment
+                </p>
+                <p style={{ margin: 0, border: "1px solid #000", padding: "8px 10px", fontSize: "8.5px", color: "#222", fontStyle: "italic", minHeight: 36, background: "#fff" }}>
+                  {report.principal_comment || "No comment provided."}
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-        {/* Footer / Signatures */}
-        <div className="px-8 py-8 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="border-t-2 border-slate-400 dark:border-slate-600 pt-2 mt-12">
-                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Class Teacher&apos;s Signature</div>
-                <div className="text-xs text-slate-500 mt-0.5">{student.class_teacher_name || "________________"}</div>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="border-t-2 border-slate-400 dark:border-slate-600 pt-2 mt-12">
-                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Principal&apos;s Signature</div>
-                <div className="text-xs text-slate-500 mt-0.5">Date: {new Date().toLocaleDateString()}</div>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="border-t-2 border-slate-400 dark:border-slate-600 pt-2 mt-12">
-                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Parent/Guardian&apos;s Signature</div>
-                <div className="text-xs text-slate-500 mt-0.5">{student.parent_name || "________________"}</div>
-              </div>
-            </div>
-          </div>
-          <div className="text-center mt-8 text-[10px] text-slate-400 uppercase tracking-widest">
-            Powered by School SaaS &bull; Official Academic Report
-          </div>
-        </div>
+        {/* ===== SIGNATURES ===== */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "14px" }}>
+          <tbody>
+            <tr>
+              <td style={{ textAlign: "center", padding: "0 8px" }}>
+                <p style={{ margin: "28px 0 0 0", borderTop: "1px solid #000", paddingTop: "4px" }}>
+                  <span style={{ fontSize: "8px", fontWeight: 700, textTransform: "uppercase" }}>Class Teacher&apos;s Signature</span>
+                  <br />
+                  <span style={{ fontSize: "7px", color: "#444", marginTop: "2px" }}>{student.class_teacher_name || ""}</span>
+                </p>
+              </td>
+              <td style={{ textAlign: "center", padding: "0 8px" }}>
+                <p style={{ margin: "28px 0 0 0", borderTop: "1px solid #000", paddingTop: "4px" }}>
+                  <span style={{ fontSize: "8px", fontWeight: 700, textTransform: "uppercase" }}>Principal&apos;s Signature</span>
+                  <br />
+                  <span style={{ fontSize: "7px", color: "#444", marginTop: "2px" }}>Date: {new Date().toLocaleDateString()}</span>
+                </p>
+              </td>
+              <td style={{ textAlign: "center", padding: "0 8px" }}>
+                <p style={{ margin: "28px 0 0 0", borderTop: "1px solid #000", paddingTop: "4px" }}>
+                  <span style={{ fontSize: "8px", fontWeight: 700, textTransform: "uppercase" }}>Parent / Guardian&apos;s Signature</span>
+                  <br />
+                  <span style={{ fontSize: "7px", color: "#444", marginTop: "2px" }}>{student.parent_name || ""}</span>
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ===== FOOTER ===== */}
+        <p style={{ margin: "6px 0 0 0", textAlign: "center", fontSize: "7px", color: "#555", paddingTop: "5px", borderTop: "1px solid #000" }}>
+          Powered by School SaaS &mdash; Official Academic Report
+        </p>
       </div>
     </div>
   );

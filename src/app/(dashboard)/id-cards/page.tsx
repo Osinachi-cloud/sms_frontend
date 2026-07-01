@@ -103,9 +103,17 @@ export default function IdCardsPage() {
                     <QrCode className="w-6 h-6 opacity-80" />
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
-                      {student.fullName?.charAt(0)}
-                    </div>
+                    {student.photoUrl ? (
+                      <img
+                        src={student.photoUrl}
+                        alt={student.fullName}
+                        className="w-14 h-14 rounded object-cover border-2 border-white/30"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
+                        {student.fullName?.charAt(0)}
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">{student.fullName}</p>
                       <p className="text-xs text-white/70">{student.admissionNumber}</p>
