@@ -21,6 +21,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { reportCardApi } from "@/lib/api";
+import toast from "react-hot-toast";
 
 function resolveGrade(total: number | null, gradingScale: any[]): string {
   if (total === null || total === undefined) return "-";
@@ -68,51 +70,132 @@ function gradeBg(grade: string): string {
 function getRatingLabel(rating: any): string {
   if (rating === null || rating === undefined) return "-";
   const n = Number(rating);
-  if (n >= 5) return "Excellent";
-  if (n >= 4) return "Very Good";
-  if (n >= 3) return "Good";
-  if (n >= 2) return "Fair";
+  if (n >= 80) return "Excellent";
+  if (n >= 70) return "Very Good";
+  if (n >= 60) return "Good";
+  if (n >= 50) return "Fair";
   return "Poor";
 }
 
 function getRatingColor(rating: any): string {
   if (rating === null || rating === undefined) return "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500";
   const n = Number(rating);
-  if (n >= 5) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-  if (n >= 4) return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-  if (n >= 3) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  if (n >= 2) return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+  if (n >= 80) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+  if (n >= 70) return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+  if (n >= 60) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  if (n >= 50) return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
   return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
 }
 
 interface ReportCardTemplateProps {
   report: any;
-  onPrint?: () => void;
-  onDownload?: () => void;
+  schoolId?: string;
 }
 
-export default function ReportCardTemplate({ report, onPrint, onDownload }: ReportCardTemplateProps) {
+export default function ReportCardTemplate({ report, schoolId }: ReportCardTemplateProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
 
+  const handlePrint = useCallback(() => {
+    if (!reportRef.current) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Popup blocked. Please allow popups to print.");
+      return;
+    }
+
+    const html = reportRef.current.outerHTML;
+    const styles = Array.from(document.styleSheets)
+      .map((sheet) => {
+        try {
+          return Array.from(sheet.cssRules).map((r) => r.cssText).join("\n");
+        } catch {
+          return "";
+        }
+      })
+      .join("\n");
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Report Card - ${report?.student?.name || "Student"}</title>
+          <style>
+            ${styles}
+            @media print {
+              body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+            body { font-family: system-ui, -apple-system, sans-serif; background: white; }
+          </style>
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-white p-0">
+          <div class="max-w-[210mm] mx-auto">
+            ${html}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 800);
+  }, [report]);
+
   const handleDownload = useCallback(async () => {
+    const studentId = report?.student?.id;
+    const termId = report?.term?.id;
+
+    // Prefer backend PDF endpoint for best quality
+    if (schoolId && studentId) {
+      setDownloading(true);
+      try {
+        const res = await reportCardApi.downloadPdf(schoolId, studentId, termId || undefined);
+        const blob = new Blob([res.data], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${report?.student?.name || "report-card"}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success("PDF downloaded");
+        return;
+      } catch {
+        toast.error("Backend PDF failed, trying local generation...");
+      }
+    }
+
+    // Fallback: html2pdf.js
     if (!reportRef.current) return;
     setDownloading(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const studentName = report?.student?.name || "report-card";
       const opt = {
-        margin: [10, 10, 10, 10] as [number, number, number, number],
+        margin: [8, 8, 8, 8] as [number, number, number, number],
         filename: `${studentName}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        html2canvas: {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          windowWidth: 1200,
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
       };
       await html2pdf().set(opt).from(reportRef.current).save();
+      toast.success("PDF downloaded");
+    } catch {
+      toast.error("Failed to generate PDF");
     } finally {
       setDownloading(false);
     }
-  }, [report]);
+  }, [report, schoolId]);
 
   if (!report) return null;
 
@@ -126,12 +209,9 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
   const overallAverage = report.overall_average;
   const overallGrade = report.overall_grade;
 
-  // School branding colors
   const primaryColor = school.primaryColor || "#3b82f6";
   const secondaryColor = school.secondaryColor || "#8b5cf6";
-  const accentColor = school.accentColor || "#10b981";
 
-  // Grading scale from backend config (with sensible defaults)
   const gradingScale = report.grading_scale || [
     { grade: "A", minScore: 70, maxScore: 100, label: "Excellent" },
     { grade: "B", minScore: 60, maxScore: 69, label: "Very Good" },
@@ -140,7 +220,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
     { grade: "F", minScore: 0, maxScore: 44, label: "Poor" },
   ];
 
-  // Extract all unique component names across subjects for column ordering
   const allComponentNames: string[] = Array.from(
     new Set<string>(
       subjects.flatMap((sub: any) =>
@@ -149,29 +228,16 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
     )
   );
 
-  const getComponentDisplay = (subject: any, name: string) => {
-    const comp = (subject.components || []).find((c: any) => c.component_name === name);
-    if (!comp) return "-";
-    if (comp.score === null || comp.score === undefined) return "...";
-    if (comp.score === "-") return "Missed";
-    return `${comp.score}`;
-  };
-
-  const getComponentWeight = (subject: any, name: string) => {
-    const comp = (subject.components || []).find((c: any) => c.component_name === name);
-    return comp?.weight ?? "-";
-  };
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Actions Bar */}
-      <div className="flex justify-between items-center print:hidden">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Report Card</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onPrint}>
+          <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" /> Print
           </Button>
-          <Button onClick={onDownload || handleDownload} disabled={downloading}>
+          <Button onClick={handleDownload} disabled={downloading}>
             {downloading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
@@ -183,20 +249,17 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
       </div>
 
       {/* Report Card Paper */}
-      <div ref={reportRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-none print:rounded-none">
-        {/* Header Banner — uses school's custom branding colors */}
+      <div ref={reportRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* Header Banner */}
         <div
           className="relative text-white px-8 py-8"
-          style={{
-            background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
-          }}
+          style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
         >
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
           </div>
           <div className="relative flex items-center gap-6">
-            {/* School Logo Placeholder */}
             <div className="w-20 h-20 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center border border-white/25 shrink-0">
               {school.logoUrl ? (
                 <img src={school.logoUrl} alt="School Logo" className="w-16 h-16 object-contain" />
@@ -210,19 +273,13 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
               </h1>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-white/80">
                 {school.address && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> {school.address}
-                  </span>
+                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {school.address}</span>
                 )}
                 {school.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5" /> {school.phone}
-                  </span>
+                  <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {school.phone}</span>
                 )}
                 {school.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5" /> {school.email}
-                  </span>
+                  <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {school.email}</span>
                 )}
               </div>
             </div>
@@ -242,7 +299,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
               <span
                 key={idx}
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${gradeColor(entry.grade)}`}
-                title={`${entry.minScore} - ${entry.maxScore}% (${entry.label})`}
               >
                 {entry.grade}: {entry.minScore}-{entry.maxScore}% {entry.label ? `(${entry.label})` : ""}
               </span>
@@ -253,7 +309,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
         {/* Student Info Section */}
         <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-6">
-            {/* Student Avatar */}
             <div className="sm:col-span-2 flex flex-col items-center">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-3xl font-bold text-slate-500 border-4 border-white dark:border-slate-800 shadow-lg">
                 {student.name?.charAt(0) || "?"}
@@ -263,7 +318,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
               </div>
             </div>
 
-            {/* Student Details */}
             <div className="sm:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="space-y-2">
                 <div>
@@ -304,7 +358,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
               </div>
             </div>
 
-            {/* Overall Stats */}
             <div className="sm:col-span-4">
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                 <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-3 text-center">Overall Performance</div>
@@ -351,12 +404,8 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
                         <span className="block text-[10px] font-normal text-slate-400 normal-case">(Score / Weight)</span>
                       </th>
                     ))}
-                    <th className="text-center py-3 px-3 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider whitespace-nowrap">
-                      Total
-                    </th>
-                    <th className="text-center py-3 px-4 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider">
-                      Grade
-                    </th>
+                    <th className="text-center py-3 px-3 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider whitespace-nowrap">Total</th>
+                    <th className="text-center py-3 px-4 font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider">Grade</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -369,18 +418,14 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
                         key={idx}
                         className={`border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${gradeBg(grade)}`}
                       >
-                        <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
-                          {sub.subject_name || "-"}
-                        </td>
+                        <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{sub.subject_name || "-"}</td>
                         {allComponentNames.map((name, i) => {
                           const comp = (sub.components || []).find((c: any) => c.component_name === name);
                           return (
                             <td key={i} className="py-3 px-3 text-center text-slate-600 dark:text-slate-300">
                               {comp ? (
                                 <span>
-                                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                    {comp.score === null || comp.score === undefined ? "..." : comp.score}
-                                  </span>
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200">{comp.score === null || comp.score === undefined ? "..." : comp.score}</span>
                                   <span className="text-slate-400 text-xs"> / {comp.weight}</span>
                                 </span>
                               ) : (
@@ -390,18 +435,14 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
                           );
                         })}
                         <td className="py-3 px-3 text-center">
-                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                            {total !== null && total !== undefined ? total : "..."}
-                          </span>
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{total !== null && total !== undefined ? total : "..."}</span>
                           {!isComplete && total !== null && (
                             <span className="block text-[9px] text-amber-500 font-semibold uppercase tracking-wide mt-0.5">Partial</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {grade !== "-" ? (
-                            <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border ${gradeColor(grade)}`}>
-                              {grade}
-                            </span>
+                            <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border ${gradeColor(grade)}`}>{grade}</span>
                           ) : (
                             <span className="text-slate-300">-</span>
                           )}
@@ -423,7 +464,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
         {/* Affective Domain & Attendance Grid */}
         <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Affective Domain — side-by-side grid */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 mb-3">
                 <Award className="w-5 h-5 text-slate-700 dark:text-slate-300" />
@@ -453,7 +493,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
               </div>
             </div>
 
-            {/* Attendance Summary */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-5 h-5 text-slate-700 dark:text-slate-300" />
@@ -488,29 +527,22 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
         {/* Comments */}
         <div className="px-8 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Teacher Comment */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <User className="w-4 h-4 text-slate-700 dark:text-slate-300" />
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide">Teacher&apos;s Comment</h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 min-h-[80px]">
-                <p className="text-sm text-slate-700 dark:text-slate-300 italic">
-                  {report.teacher_comment || "No comment provided."}
-                </p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 italic">{report.teacher_comment || "No comment provided."}</p>
               </div>
             </div>
-
-            {/* Principal Comment */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <School className="w-4 h-4 text-slate-700 dark:text-slate-300" />
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide">Principal&apos;s Comment</h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 min-h-[80px]">
-                <p className="text-sm text-slate-700 dark:text-slate-300 italic">
-                  {report.principal_comment || "No comment provided."}
-                </p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 italic">{report.principal_comment || "No comment provided."}</p>
               </div>
             </div>
           </div>
@@ -543,19 +575,6 @@ export default function ReportCardTemplate({ report, onPrint, onDownload }: Repo
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @media print {
-          body {
-            background: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .print\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -554,6 +554,17 @@ export const gamificationApi = {
     api.get(`/api/schools/${schoolId}/gamification/users/${userId}/points`),
 };
 
+export const affectiveRatingApi = {
+  getForStudent: (schoolId: string, studentId: string, termId: string, weekNumber?: number) =>
+    api.get(`/api/schools/${schoolId}/affective-ratings/student/${studentId}`, { params: { termId, weekNumber } }),
+  getForTerm: (schoolId: string, termId: string, weekNumber?: number) =>
+    api.get(`/api/schools/${schoolId}/affective-ratings`, { params: { termId, weekNumber } }),
+  saveForStudent: (schoolId: string, studentId: string, termId: string, weekNumber: number, ratings: any[]) =>
+    api.post(`/api/schools/${schoolId}/affective-ratings/student/${studentId}?termId=${termId}&weekNumber=${weekNumber}`, ratings),
+  delete: (schoolId: string, ratingId: string) =>
+    api.delete(`/api/schools/${schoolId}/affective-ratings/${ratingId}`),
+};
+
 export const admissionApi = {
   getAll: (schoolId: string, params?: { page?: number; size?: number; status?: string }) =>
     api.get(`/api/schools/${schoolId}/admissions`, { params }),
@@ -577,6 +588,10 @@ export const reportCardApi = {
       params: { termId },
       responseType: 'blob',
     }),
+  emailToParent: (schoolId: string, reportCardId: string) =>
+    api.post(`/api/schools/${schoolId}/report-cards/${reportCardId}/email`),
+  bulkEmailToParents: (schoolId: string, data: { classIds: string[]; termId: string }) =>
+    api.post(`/api/schools/${schoolId}/report-cards/bulk-email`, data),
 };
 
 export const schoolSettingsApi = {

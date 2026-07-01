@@ -11,7 +11,6 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string, schoolId?: string) => Promise<void>;
-  mockLogin: (role: 'platform-admin' | 'admin' | 'teacher' | 'student' | 'parent') => void;
   register: (fullName: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   selectSchool: (school: SchoolInfo) => Promise<void>;
@@ -26,123 +25,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const MOCK_USERS: Record<string, User> = {
-  'platform-admin': {
-    id: 'u-admin',
-    email: 'cstemagic@gmail.com',
-    fullName: 'Platform Admin',
-    platformRole: 'APP_ADMIN',
-    schools: [],
-  },
-  admin: {
-    id: 'u-gf-admin',
-    email: 'cstemagic@gmail.com',
-    fullName: 'Mrs. Folake Adeleke',
-    platformRole: '',
-    schools: [
-      {
-        id: 'sch1',
-        name: 'Greenfield Academy',
-        code: 'GFA001',
-        roleName: 'ADMIN',
-        permissions: [
-          'student.read', 'student.create', 'student.update', 'student.delete', 'student.bulk.enroll',
-          'student.grades.read', 'student.grades.manage', 'student.attendance.read', 'student.attendance.manage',
-          'teacher.read', 'teacher.create', 'teacher.update', 'teacher.delete', 'teacher.assign.class',
-          'class.read', 'class.create', 'class.update', 'class.delete',
-          'cms.folder.read', 'cms.folder.create', 'cms.content.read', 'cms.content.approve', 'cms.content.publish',
-          'fee.read', 'fee.create', 'fee.update', 'payment.read', 'payment.create', 'payment.gateway.manage', 'payment.gateway.switch',
-          'analytics.academic.view', 'analytics.finance.view', 'school.read', 'school.update',
-          'role.read', 'role.create', 'role.delete',
-          'user.read', 'user.create',
-          'product.create', 'cms.content.edit.any', 'subject.create', 'subject.update', 'subject.delete',
-          'timetable.read', 'timetable.create', 'timetable.update', 'timetable.delete',
-        ],
-      },
-    ],
-  },
-  teacher: {
-    id: 'u-gf-teacher',
-    email: 'teacher@greenfield.edu',
-    fullName: 'Mr. John Okafor',
-    platformRole: '',
-    schools: [
-      {
-        id: 'sch1',
-        name: 'Greenfield Academy',
-        code: 'GFA001',
-        roleName: 'TEACHER',
-        permissions: [
-          'student.read', 'student.grades.read', 'student.grades.manage',
-          'student.attendance.read', 'student.attendance.manage',
-          'class.read', 'cms.folder.read', 'cms.folder.create', 'cms.content.read', 'cms.content.create',
-          'cms.content.edit', 'cms.content.delete', 'cms.content.submit', 'subject.read',
-          'timetable.read', 'timetable.create', 'timetable.update', 'timetable.delete',
-        ],
-      },
-    ],
-  },
-  student: {
-    id: 'u-gf-student',
-    email: 'ade.johnson@student.com',
-    fullName: 'Ade Johnson',
-    platformRole: '',
-    studentId: 'stu-ade-001',
-    schools: [
-      {
-        id: 'sch1',
-        name: 'Greenfield Academy',
-        code: 'GFA001',
-        roleName: 'STUDENT',
-        permissions: [
-          'student.grades.read', 'student.attendance.read',
-          'cms.content.read', 'fee.read', 'payment.read',
-        ],
-      },
-    ],
-  },
-    parent: {
-    id: 'u-parent-01',
-    email: 'cstemagic@gmail.com',
-    fullName: 'Mrs Johnson',
-    platformRole: '',
-    children: [
-      { id: 'stu-ade-001', fullName: 'Ade Johnson', className: 'JSS 1A' },
-      { id: 'stu-joy-002', fullName: 'Joy Johnson', className: 'JSS 2B' },
-    ],
-    schools: [
-      {
-        id: 'sch1',
-        name: 'Greenfield Academy',
-        code: 'GFA001',
-        roleName: 'PARENT',
-        permissions: ['fee.read', 'payment.read', 'student.grades.read', 'student.attendance.read'],
-      },
-    ],
-  },
-  'temp-admin-teacher': {
-    id: 'u-gf-teacher-temp',
-    email: 'teacher@greenfield.edu',
-    fullName: 'Mr. John Okafor (Temp Admin)',
-    platformRole: '',
-    schools: [
-      {
-        id: 'sch1',
-        name: 'Greenfield Academy',
-        code: 'GFA001',
-        roleName: 'TEACHER',
-        permissions: [
-          'student.read', 'student.grades.read', 'student.grades.manage',
-          'student.attendance.read', 'student.attendance.manage',
-          'class.read', 'cms.folder.read', 'cms.folder.create', 'cms.content.read', 'cms.content.create',
-          'cms.content.edit', 'cms.content.delete', 'cms.content.submit', 'subject.read',
-          'timetable.read', 'timetable.create', 'timetable.update', 'timetable.delete',
-        ],
-      },
-    ],
-  },
-};
 
 function getTokenExpiration(token: string): number | null {
   try {
@@ -285,26 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const mockLogin = (role: 'platform-admin' | 'admin' | 'teacher' | 'student' | 'parent') => {
-    const mockUser = MOCK_USERS[role];
-    const token = `mock-jwt-token-${role}`;
-
-    localStorage.setItem('accessToken', token);
-    localStorage.setItem('refreshToken', `mock-refresh-${role}`);
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    setUser(mockUser);
-
-    if (mockUser.schools.length > 0) {
-      setCurrentSchool(mockUser.schools[0]);
-      localStorage.setItem('currentSchool', JSON.stringify(mockUser.schools[0]));
-    } else {
-      setCurrentSchool(null);
-      localStorage.removeItem('currentSchool');
-    }
-
-    router.push('/dashboard');
-  };
-
   const register = async (fullName: string, email: string, password: string, phone?: string) => {
     const response = await authApi.register({ fullName, email, password, phone });
     const data = response.data;
@@ -383,7 +245,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
-        mockLogin,
         register,
         logout,
         selectSchool,

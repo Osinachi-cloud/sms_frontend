@@ -46,7 +46,7 @@ export default function StudentReportView({
   return (
     <ReportCardTemplate
       report={report}
-      onPrint={() => window.print()}
+      schoolId={schoolId}
     />
   );
 }

@@ -46,11 +46,11 @@ export default function SettingsPage() {
 
   // School branding state
   const [schoolBranding, setSchoolBranding] = useState({
-    schoolName: currentSchool?.name || 'Greenfield Academy',
-    schoolCode: currentSchool?.code || 'GFA001',
-    email: 'admin@greenfield.edu',
-    phone: '08012345670',
-    address: '1 Greenfield Avenue, Lagos',
+    schoolName: currentSchool?.name || '',
+    schoolCode: currentSchool?.code || '',
+    email: '',
+    phone: '',
+    address: '',
     primaryColor: '#3b82f6',
     secondaryColor: '#8b5cf6',
     accentColor: '#10b981',
@@ -107,7 +107,7 @@ export default function SettingsPage() {
           });
         }
       }).catch(() => {
-        // Use defaults/mock data
+        // Use defaults
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

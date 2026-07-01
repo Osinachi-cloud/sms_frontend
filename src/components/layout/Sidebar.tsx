@@ -30,6 +30,7 @@ import {
   UserCog,
   X,
   Menu,
+  Star,
 } from 'lucide-react';
 import AliSimbiLogo from '@/components/landing/AliSimbiLogo';
 import Link from 'next/link';
@@ -72,6 +73,7 @@ const schoolAdminNavItems: NavItem[] = [
   { name: 'Admissions', href: '/admissions', icon: TicketCheck },
   { name: 'Payments', href: '/payments', icon: CreditCard, permission: 'payment.read' },
   { name: 'Gradebook', href: '/gradebook', icon: Award, permission: 'student.grades.read' },
+  { name: 'Weekly Evaluation', href: '/teacher/weekly-evaluation', icon: Star },
   { name: 'Analytics', href: '/analytics', icon: BarChart3, permission: 'analytics.academic.view' },
   { name: 'Gamification', href: '/gamification', icon: Gamepad2 },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
@@ -113,6 +115,7 @@ const teacherNavItems: NavItem[] = [
   { name: 'My Subjects', href: '/teacher/my-subjects', icon: BookOpen },
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Attendance', href: '/teacher/attendance', icon: CalendarDays },
+  { name: 'Weekly Evaluation', href: '/teacher/weekly-evaluation', icon: Star },
   { name: 'Assessments', href: '/teacher/assessments', icon: ClipboardList },
   { name: 'Gradebook', href: '/teacher/gradebook', icon: Award },
   { name: 'Library', href: '/library', icon: Library },

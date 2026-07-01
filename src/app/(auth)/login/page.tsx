@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { motion } from 'framer-motion';
-import { School, Mail, Lock, Eye, EyeOff, UserCheck, GraduationCap, Shield, BookOpen, AtSign } from 'lucide-react';
+import { School, Lock, Eye, EyeOff, AtSign } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -23,7 +23,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, mockLogin } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const {
@@ -51,7 +51,7 @@ export default function LoginPage() {
         );
       } else if (isNetworkError) {
         toast.error(
-          'Cannot reach the backend server. Please check your internet connection or try a demo login below.',
+          'Cannot reach the backend server. Please check your internet connection and try again.',
           { duration: 5000 }
         );
       } else {
@@ -60,11 +60,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleMockLogin = (role: 'platform-admin' | 'admin' | 'teacher' | 'student') => {
-    mockLogin(role);
-    toast.success(`Logged in as ${role.replace('-', ' ')} (demo)`);
   };
 
   return (
@@ -147,40 +142,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Demo Login (No Backend)</span>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('platform-admin')}>
-              <Shield className="w-4 h-4 mr-1" />
-              Platform Admin
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('admin')}>
-              <UserCheck className="w-4 h-4 mr-1" />
-              School Admin
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('teacher')}>
-              <GraduationCap className="w-4 h-4 mr-1" />
-              Teacher
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleMockLogin('student')}>
-              <BookOpen className="w-4 h-4 mr-1" />
-              Student
-            </Button>
-          </div>
-          <p className="text-center mt-2 text-[10px] text-slate-400">
-            Click any demo role to simulate login without a running server.
-          </p>
-        </div>
-
-        <p className="text-center mt-4 text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-center mt-6 text-sm text-slate-500 dark:text-slate-400">
           Don&apos;t have an account?{' '}
           <Link href="/register" className="text-primary-600 hover:underline font-medium">
             Sign up
