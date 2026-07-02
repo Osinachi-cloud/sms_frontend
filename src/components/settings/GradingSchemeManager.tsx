@@ -139,6 +139,10 @@ export default function GradingSchemeManager({ schoolId }: { schoolId: string })
 
   const handleSave = async () => {
     if (!editingScheme) return;
+    if (!editingScheme.name || !editingScheme.name.trim()) {
+      toast.error("Scheme name is required.");
+      return;
+    }
     if (totalWeight !== 100) {
       toast.error(`Total weight must be exactly 100. Current total: ${totalWeight}`);
       return;
