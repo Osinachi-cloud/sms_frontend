@@ -37,6 +37,7 @@ interface StudentAttendance {
 interface ClassInfo {
   id: string;
   name: string;
+  section?: string;
 }
 
 const STATUS_OPTIONS = [
@@ -263,7 +264,7 @@ export default function TeacherAttendancePage() {
             >
               <option value="">Select a class</option>
               {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>
               ))}
             </select>
           </div>

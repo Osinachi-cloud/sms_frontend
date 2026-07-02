@@ -82,10 +82,11 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
   const fetchData = async () => {
     if (!schoolId) return;
     try {
-      const [settingsRes, classesRes, sessionsRes, currentRes] = await Promise.all([
+      const [settingsRes, classesRes, sessionsRes, termsRes, currentRes] = await Promise.all([
         settingsApi.get(schoolId),
         classApi.getAll(schoolId, { size: 1000 }),
         academicSessionApi.getAll(schoolId, { size: 100 }),
+        termApi.getAll(schoolId, { size: 100 }),
         termApi.getCurrent(schoolId).catch(() => ({ data: null })),
       ]);
       const data = (settingsRes as any).data || {};
@@ -93,6 +94,8 @@ export default function FeeManagement({ schoolId }: { schoolId: string }) {
       setFeeItems(rawFees.length ? rawFees : []);
       setClasses((classesRes as any).data?.content || (classesRes as any).data || []);
       setSessions((sessionsRes as any).data?.content || (sessionsRes as any).data || []);
+      const allTerms = (termsRes as any).data?.content || (termsRes as any).data || [];
+      setTerms(allTerms);
       const currentTerm = (currentRes as any)?.data || data.currentTerm || null;
       if (currentTerm) {
         setCurrentTermId(currentTerm.id);

@@ -53,6 +53,7 @@ interface ComputedData {
 interface TeacherAssignment {
   classId: string;
   className: string;
+  classSection?: string;
   subjectId?: string;
   subjectName?: string;
   isClassTeacher: boolean;
@@ -87,7 +88,7 @@ export default function TeacherGradebookPage() {
 
   // Derive unique classes and subjects from teacher assignments
   const classes = Array.from(
-    new Map(assignments.map(a => [a.classId, { id: a.classId, name: a.className }])).values()
+    new Map(assignments.map(a => [a.classId, { id: a.classId, name: a.className, section: a.classSection }])).values()
   );
 
   // All unique subjects the teacher teaches (any class)
@@ -116,7 +117,7 @@ export default function TeacherGradebookPage() {
         new Map(
           assignments
             .filter(a => a.subjectId === subjectId)
-            .map(a => [a.classId, { id: a.classId, name: a.className }])
+            .map(a => [a.classId, { id: a.classId, name: a.className, section: a.classSection }])
         ).values()
       )
     : classes;
@@ -352,7 +353,7 @@ export default function TeacherGradebookPage() {
             onChange={(e) => { setClassId(e.target.value); setCurrentPage(0); }}
           >
             <option value="">All My Classes</option>
-            {availableClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {availableClasses.map((c) => <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>)}
           </select>
           <select
             className="px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"

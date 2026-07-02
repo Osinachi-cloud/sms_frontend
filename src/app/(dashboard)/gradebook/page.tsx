@@ -59,7 +59,7 @@ const PAGE_SIZE = 50;
 
 export default function AdminGradebookPage() {
   const { currentSchool } = useAuth();
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string; section?: string }[]>([]);
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
   const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
@@ -309,7 +309,7 @@ export default function AdminGradebookPage() {
             onChange={(e) => { setClassId(e.target.value); setCurrentPage(0); }}
           >
             <option value="">All Classes</option>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>)}
           </select>
           <select
             className="px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"

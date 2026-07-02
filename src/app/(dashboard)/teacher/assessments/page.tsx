@@ -41,7 +41,7 @@ export default function TeacherAssessmentsPage() {
   const [showCreate, setShowCreate] = useState(false);
 
   // Create form
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string; section?: string }[]>([]);
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
   const [creating, setCreating] = useState(false);
@@ -255,7 +255,7 @@ export default function TeacherAssessmentsPage() {
                 onChange={(e) => setForm({ ...form, classId: e.target.value })}
               >
                 <option value="">Select class...</option>
-                {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {classes.map((c) => <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>)}
               </select>
             </div>
             <div>

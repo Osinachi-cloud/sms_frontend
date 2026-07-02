@@ -23,6 +23,8 @@ import {
   Wallet,
   X,
   Loader2,
+  Info,
+  ArrowRight,
 } from 'lucide-react';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -78,6 +80,7 @@ export default function StudentFeesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedFeeForTransfer, setSelectedFeeForTransfer] = useState<FeeItem | null>(null);
+  const [selectedFeeDetail, setSelectedFeeDetail] = useState<FeeItem | null>(null);
   const [copiedAccountId, setCopiedAccountId] = useState<string | null>(null);
   const [terms, setTerms] = useState<Array<{ id: string; name: string; sessionId: string }>>([]);
   const [selectedTermId, setSelectedTermId] = useState<string>('');
@@ -705,26 +708,34 @@ export default function StudentFeesPage() {
                         )}
                       </div>
 
-                      {!paid && (
-                        <div className="flex gap-2 mt-4">
-                          {gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handlePayOnline(fee)}
-                              isLoading={inlineStatus === 'initializing' || inlineStatus === 'pending'}
-                            >
-                              <CreditCard className="w-4 h-4 mr-1" />
-                              Pay Online
-                            </Button>
-                          ) : null}
-                          {paymentAccounts.length > 0 && (
-                            <Button size="sm" variant="secondary" onClick={() => handleShowTransfer(fee)}>
-                              <Landmark className="w-4 h-4 mr-1" />
-                              Bank Transfer
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={() => setSelectedFeeDetail(fee)}
+                          className="flex-1 btn-secondary text-xs py-2 justify-center flex items-center gap-1 rounded-xl"
+                        >
+                          <Info className="w-3.5 h-3.5" /> View Details
+                        </button>
+                        {!paid && (
+                          <>
+                            {gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handlePayOnline(fee)}
+                                isLoading={inlineStatus === 'initializing' || inlineStatus === 'pending'}
+                              >
+                                <CreditCard className="w-4 h-4 mr-1" />
+                                Pay Online
+                              </Button>
+                            ) : null}
+                            {paymentAccounts.length > 0 && (
+                              <Button size="sm" variant="secondary" onClick={() => handleShowTransfer(fee)}>
+                                <Landmark className="w-4 h-4 mr-1" />
+                                Bank Transfer
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -868,6 +879,154 @@ export default function StudentFeesPage() {
             <Button variant="secondary" className="w-full" onClick={() => setShowTransferModal(false)}>
               Close
             </Button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Fee Product Detail Modal */}
+      {selectedFeeDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 space-y-5"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Tag className="w-5 h-5 text-primary-500" />
+                Fee Details
+              </h3>
+              <button
+                onClick={() => setSelectedFeeDetail(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isFeePaid(selectedFeeDetail.id) ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-primary-500 to-purple-600'}`}>
+                  {isFeePaid(selectedFeeDetail.id) ? (
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  ) : (
+                    <Tag className="w-6 h-6 text-white" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-bold text-base">{selectedFeeDetail.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
+                    {selectedFeeDetail.isMandatory !== false && (
+                      <Badge variant="error" className="text-[10px]">Mandatory</Badge>
+                    )}
+                    {selectedFeeDetail.isMandatory === false && (
+                      <Badge variant="info" className="text-[10px]">Optional</Badge>
+                    )}
+                    {isFeePaid(selectedFeeDetail.id) && (
+                      <Badge variant="success" className="text-[10px]">Paid</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedFeeDetail.description && (
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  {selectedFeeDetail.description}
+                </p>
+              )}
+
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-500">Amount</span>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-primary-600">
+                      ₦{computeDiscountedAmount(selectedFeeDetail).toLocaleString()}
+                    </p>
+                    {computeDiscountedAmount(selectedFeeDetail) < selectedFeeDetail.amount && (
+                      <p className="text-xs text-slate-400 line-through">
+                        ₦{selectedFeeDetail.amount.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {selectedFeeDetail.discountType !== 'none' && selectedFeeDetail.discountValue > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Discount</span>
+                    <Badge variant="warning" className="text-[10px]">
+                      {selectedFeeDetail.discountType === 'percentage' ? `${selectedFeeDetail.discountValue}%` : `₦${selectedFeeDetail.discountValue}`} off
+                    </Badge>
+                  </div>
+                )}
+
+                {selectedFeeDetail.discountDeadline && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Discount Deadline</span>
+                    <span className="text-sm font-medium">
+                      {new Date(selectedFeeDetail.discountDeadline).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+
+                {selectedFeeDetail.paymentDeadline && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Payment Deadline</span>
+                    <span className="text-sm font-medium">
+                      {new Date(selectedFeeDetail.paymentDeadline).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-500">Applicable To</span>
+                  <span className="text-sm font-medium">
+                    {selectedFeeDetail.applicableToAll ? 'All Classes' : 'Selected Classes'}
+                  </span>
+                </div>
+              </div>
+
+              {!isFeePaid(selectedFeeDetail.id) ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-400 text-center">
+                    Click below to proceed to payment
+                  </p>
+                  <div className="flex gap-2">
+                    {gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled ? (
+                      <Button
+                        className="flex-1"
+                        onClick={() => {
+                          handlePayOnline(selectedFeeDetail);
+                          setSelectedFeeDetail(null);
+                        }}
+                        isLoading={inlineStatus === 'initializing' || inlineStatus === 'pending'}
+                      >
+                        <CreditCard className="w-4 h-4 mr-1" />
+                        Pay Now
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    ) : null}
+                    {paymentAccounts.length > 0 && (
+                      <Button
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedFeeDetail(null);
+                          handleShowTransfer(selectedFeeDetail);
+                        }}
+                      >
+                        <Landmark className="w-4 h-4 mr-1" />
+                        Bank Transfer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-sm flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <p>This fee has been paid. No further action is required.</p>
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
       )}

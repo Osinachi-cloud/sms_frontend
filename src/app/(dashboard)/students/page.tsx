@@ -63,7 +63,7 @@ export default function StudentsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
-  const [classesList, setClassesList] = useState<{ id: string; name: string }[]>([]);
+  const [classesList, setClassesList] = useState<{ id: string; name: string; section?: string }[]>([]);
 
   // Query params for teacher class/subject filtering
   const queryClassId = searchParams.get('class') || '';
@@ -603,7 +603,7 @@ export default function StudentsPage() {
                 <select value={studentInfo.classId} onChange={(e) => setStudentInfo((p) => ({ ...p, classId: e.target.value }))} className="glass-input w-full">
                   <option value="">Select a class</option>
                   {classesList.map((cls) => (
-                    <option key={cls.id} value={cls.id}>{cls.name}</option>
+                    <option key={cls.id} value={cls.id}>{cls.name}{cls.section ? ` (${cls.section})` : ''}</option>
                   ))}
                   {classesList.length === 0 && <option value="" disabled>No classes available</option>}
                 </select>
@@ -933,7 +933,7 @@ export default function StudentsPage() {
               <select value={editForm.classId} onChange={(e) => setEditForm((p) => ({ ...p, classId: e.target.value }))} className="glass-input w-full">
                 <option value="">Select a class</option>
                 {classesList.map((cls) => (
-                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                  <option key={cls.id} value={cls.id}>{cls.name}{cls.section ? ` (${cls.section})` : ''}</option>
                 ))}
               </select>
             </div>

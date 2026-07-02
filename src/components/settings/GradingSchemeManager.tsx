@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { settingsApi } from "@/lib/api";
 
-const STANDARD_COMPONENTS = ["Quiz", "Assignment", "Assessment", "Exam"];
+const SUGGESTED_COMPONENTS = ["Quiz", "Assignment", "Assessment", "Exam", "Examination", "Test", "CA", "Mid-Term", "Project", "Practical", "Oral", "Homework"];
 
 interface Component {
   name: string;
@@ -106,18 +106,11 @@ export default function GradingSchemeManager({ schoolId }: { schoolId: string })
     }
   };
 
-  const usedComponentNames = editingScheme?.components.map((c) => c.name) || [];
-  const availableComponents = STANDARD_COMPONENTS.filter((name) => !usedComponentNames.includes(name));
-
   const addComponent = () => {
     if (!editingScheme) return;
-    if (availableComponents.length === 0) {
-      toast.error("All standard components have been added.");
-      return;
-    }
     setEditingScheme({
       ...editingScheme,
-      components: [...editingScheme.components, { name: availableComponents[0], weight: 0 }],
+      components: [...editingScheme.components, { name: "", weight: 0 }],
     });
   };
 
@@ -343,7 +336,7 @@ export default function GradingSchemeManager({ schoolId }: { schoolId: string })
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Grading Schemes</h2>
             <p className="text-sm text-slate-500 mt-1">
-              Define component weights (Quiz, Assignment, Assessment, Exam). Weights must sum to exactly 100.
+              Define component weights (e.g. Examination, CA, Test, Project). Weights must sum to exactly 100. You can use any name you want.
             </p>
           </div>
           {!editingScheme && (
@@ -375,7 +368,7 @@ export default function GradingSchemeManager({ schoolId }: { schoolId: string })
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Components</label>
-                  <Button variant="outline" size="sm" onClick={addComponent} disabled={availableComponents.length === 0}>
+                  <Button variant="outline" size="sm" onClick={addComponent}>
                     <Plus className="w-4 h-4 mr-1" /> Add Component
                   </Button>
                 </div>
@@ -387,19 +380,19 @@ export default function GradingSchemeManager({ schoolId }: { schoolId: string })
                       className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50"
                     >
                       <div className="flex-1">
-                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Component</label>
-                        <select
-                          className="mt-1 w-full px-3 py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Component Name</label>
+                        <Input
+                          list="component-suggestions"
+                          className="mt-1"
+                          placeholder="e.g. Examination, CA, Test..."
                           value={comp.name}
                           onChange={(e) => updateComponent(idx, "name", e.target.value)}
-                        >
-                          <option value="">Select type...</option>
-                          {STANDARD_COMPONENTS.map((name) => (
-                            <option key={name} value={name} disabled={editingScheme.components.some((c, i) => i !== idx && c.name === name)}>
-                              {name}
-                            </option>
+                        />
+                        <datalist id="component-suggestions">
+                          {SUGGESTED_COMPONENTS.map((name) => (
+                            <option key={name} value={name} />
                           ))}
-                        </select>
+                        </datalist>
                       </div>
                       <div className="w-28">
                         <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Weight</label>

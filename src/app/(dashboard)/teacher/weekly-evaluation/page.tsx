@@ -229,7 +229,7 @@ export default function WeeklyEvaluationPage() {
           >
             <option value="">Select a class</option>
             {classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>
             ))}
           </select>
         </div>

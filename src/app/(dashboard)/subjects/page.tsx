@@ -9,7 +9,7 @@ import { subjectApi, classApi } from '@/lib/api';
 import { normalizeListResponse } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Plus, Pencil, Trash2, CheckCircle, DollarSign, Users, X } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, CheckCircle, DollarSign, Users, X, ArrowRight, Settings, Award } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { DataTable } from '@/components/ui/DataTable';
 
@@ -30,6 +30,7 @@ interface Subject {
 interface SchoolClass {
   id: string;
   name: string;
+  section?: string;
 }
 
 interface GradingScheme {
@@ -49,6 +50,7 @@ export default function SubjectsPage() {
   const [gradingSchemes, setGradingSchemes] = useState<GradingScheme[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showGuidanceModal, setShowGuidanceModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [form, setForm] = useState({
@@ -90,7 +92,7 @@ export default function SubjectsPage() {
   };
 
   const loadGradingSchemes = async () => {
-    if (!schoolId) return;
+    if (!schoolId) return [];
     try {
       const token = localStorage.getItem('accessToken');
       const res = await fetch(`/api/schools/${schoolId}/grading-schemes`, {
@@ -102,16 +104,22 @@ export default function SubjectsPage() {
       if (res.ok) {
         const data = await res.json();
         setGradingSchemes(data);
+        return data;
       }
     } catch {
       // ignore
     }
+    return [];
   };
 
-  const openCreate = () => {
+  const openCreate = async () => {
     setEditingSubject(null);
     setForm({ name: '', code: '', description: '', isFree: true, cost: '', classIds: [], gradingSchemeId: '' });
-    loadGradingSchemes();
+    const schemes = await loadGradingSchemes();
+    if (schemes.length === 0) {
+      setShowGuidanceModal(true);
+      return;
+    }
     setShowModal(true);
   };
 
@@ -173,8 +181,10 @@ export default function SubjectsPage() {
       await subjectApi.delete(schoolId, id);
       toast.success('Subject deleted');
       loadSubjects();
-    } catch {
-      toast.error('Failed to delete subject');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete subject';
+      console.error('Delete subject error:', err);
+      toast.error(msg);
     }
   };
 
@@ -354,8 +364,9 @@ export default function SubjectsPage() {
                       ? 'bg-primary-500 text-white border-primary-500'
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
+                  title={c.section ? `${c.name} - Section ${c.section}` : c.name}
                 >
-                  {c.name}
+                  {c.name}{c.section ? ` (${c.section})` : ''}
                 </button>
               ))}
             </div>
@@ -368,6 +379,56 @@ export default function SubjectsPage() {
             <Button onClick={handleSave}>
               {editingSubject ? 'Update' : 'Create'}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Grading Scheme Guidance Modal */}
+      <Modal isOpen={showGuidanceModal} onClose={() => setShowGuidanceModal(false)} title="Grading Scheme Required" size="md">
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <Award className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                You must create a grading scheme before adding subjects
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                A grading scheme defines how scores are weighted (e.g., Exam 60%, CA 40%). Without it, quizzes and assessments cannot be graded correctly.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Follow these steps:</p>
+            <div className="space-y-2">
+              {[
+                { step: 1, text: 'Click the button below to open Settings' },
+                { step: 2, text: 'Go to the "Grading Schemes" tab' },
+                { step: 3, text: 'Click "Create Scheme" and define your components (e.g., Exam, CA, Test)' },
+                { step: 4, text: 'Ensure the total weight equals exactly 100%' },
+                { step: 5, text: 'Save, then return here to create your subject' },
+              ].map((item) => (
+                <div key={item.step} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {item.step}
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowGuidanceModal(false)} className="flex-1">
+              Cancel
+            </Button>
+            <a href="/settings?tab=grading-schemes" className="flex-1">
+              <Button className="w-full flex items-center justify-center gap-2">
+                <Settings className="w-4 h-4" />
+                Go to Settings
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </a>
           </div>
         </div>
       </Modal>

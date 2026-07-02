@@ -51,7 +51,7 @@ export default function TeachersPage() {
 
   // Subject-class assignment state
   const [availableSubjects, setAvailableSubjects] = useState<{ id: string; name: string }[]>([]);
-  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string; section?: string }[]>([]);
   const [subjectAssignments, setSubjectAssignments] = useState<{ subjectId: string; classId: string }[]>([]);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<TeacherForm>({
@@ -387,7 +387,7 @@ export default function TeachersPage() {
                     >
                       <option value="">Select class</option>
                       {availableClasses.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                        <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>
                       ))}
                     </select>
                     <button

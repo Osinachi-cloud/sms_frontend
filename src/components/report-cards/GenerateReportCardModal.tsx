@@ -27,7 +27,7 @@ export default function GenerateReportCardModal({
   onClose,
   onGenerated,
 }: GenerateReportCardModalProps) {
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string; section?: string }[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
   const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
@@ -162,7 +162,7 @@ export default function GenerateReportCardModal({
               >
                 <option value="">Select a class</option>
                 {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}{c.section ? ` (${c.section})` : ''}</option>
                 ))}
               </select>
             </div>

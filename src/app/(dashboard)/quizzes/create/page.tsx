@@ -28,6 +28,9 @@ import {
   ToggleLeft,
   ToggleRight,
   X,
+  AlertTriangle,
+  Lock,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,7 +52,9 @@ export default function CreateQuizPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [gradingSchemes, setGradingSchemes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [prereqsLoading, setPrereqsLoading] = useState(true);
 
   const [form, setForm] = useState({
     title: '',
@@ -80,18 +85,26 @@ export default function CreateQuizPage() {
     if (!schoolId) return;
 
     const loadLookupData = async () => {
+      setPrereqsLoading(true);
       try {
-        const [termRes, sessRes, currentTermRes, currentSessionRes] = await Promise.all([
+        const [termRes, sessRes, currentTermRes, currentSessionRes, schemesRes] = await Promise.all([
           termApi.getAll(schoolId, { size: 100 }),
           academicSessionApi.getAll(schoolId, { size: 100 }),
           termApi.getCurrent(schoolId).catch(() => ({ data: null })),
           academicSessionApi.getCurrent(schoolId).catch(() => ({ data: null })),
+          fetch(`/api/schools/${schoolId}/grading-schemes`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
+              'X-School-Id': schoolId,
+            },
+          }).then((r) => r.ok ? r.json() : []).catch(() => []),
         ]);
 
         const trm = (termRes.data as any)?.content || [];
         const sess = (sessRes.data as any)?.content || [];
         setTerms(trm);
         setSessions(sess);
+        setGradingSchemes(Array.isArray(schemesRes) ? schemesRes : []);
         const defaultTermId = currentTermRes?.data?.id || trm[0]?.id || '';
         const defaultSessionId = currentSessionRes?.data?.id || sess[0]?.id || '';
         setForm((prev) => ({ ...prev, termId: defaultTermId, sessionId: defaultSessionId }));
@@ -100,10 +113,10 @@ export default function CreateQuizPage() {
           const assignmentsRes = await teacherAssignmentApi.getMyAssignments(schoolId);
           const assignments = (assignmentsRes.data as any[]) || [];
           const uniqueSubjects = Array.from(
-            new Map(assignments.filter((a) => a.subjectId).map((a) => [a.subjectId, { id: a.subjectId, name: a.subjectName }])).values()
+            new Map(assignments.filter((a) => a.subjectId).map((a) => [a.subjectId, { id: a.subjectId, name: a.subjectName, gradingSchemeId: a.gradingSchemeId }])).values()
           );
           const uniqueClasses = Array.from(
-            new Map(assignments.filter((a) => a.classId).map((a) => [a.classId, { id: a.classId, name: a.className }])).values()
+            new Map(assignments.filter((a) => a.classId).map((a) => [a.classId, { id: a.classId, name: a.className, section: a.classSection }])).values()
           );
           setSubjects(uniqueSubjects);
           setClasses(uniqueClasses);
@@ -117,6 +130,8 @@ export default function CreateQuizPage() {
         }
       } catch {
         toast.error('Failed to load lookup data');
+      } finally {
+        setPrereqsLoading(false);
       }
     };
 
@@ -177,9 +192,32 @@ export default function CreateQuizPage() {
     });
   };
 
+  const selectedSubject = subjects.find((s) => s.id === form.subjectId);
+  const missingPrereqs = [];
+  if (sessions.length === 0) missingPrereqs.push({ name: 'Academic Session', link: '/settings?tab=calendar' });
+  if (terms.length === 0) missingPrereqs.push({ name: 'Academic Term', link: '/settings?tab=calendar' });
+  if (classes.length === 0) missingPrereqs.push({ name: 'Class', link: '/classes' });
+  if (subjects.length === 0) missingPrereqs.push({ name: 'Subject', link: '/subjects' });
+  if (gradingSchemes.length === 0) missingPrereqs.push({ name: 'Grading Scheme', link: '/settings?tab=grading-schemes' });
+
   const handleSave = async () => {
     if (!schoolId) return;
     if (!form.title.trim()) { toast.error('Title is required'); return; }
+    if (!form.sessionId) { toast.error('Academic Session is required'); return; }
+    if (!form.termId) { toast.error('Term is required'); return; }
+    if (form.targetClassIds.length === 0) { toast.error('Select at least one target class'); return; }
+    if (!form.subjectId) { toast.error('Subject is required'); return; }
+    if (!selectedSubject?.gradingSchemeId && !gradingSchemes.some((g) => g.isDefault)) {
+      toast.error(
+        <div className="space-y-1">
+          <p className="font-semibold">Grading Scheme Required</p>
+          <p className="text-xs">The selected subject has no grading scheme.</p>
+          <p className="text-xs">Go to <strong>Subjects</strong>, edit this subject and assign a grading scheme.</p>
+        </div>,
+        { duration: 6000 }
+      );
+      return;
+    }
     if (questions.length === 0) { toast.error('Add at least one question'); return; }
 
     setLoading(true);
@@ -228,7 +266,72 @@ export default function CreateQuizPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Prerequisites Blocker */}
+      {missingPrereqs.length > 0 && (
+        <div className="p-6 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="font-bold text-base">Setup Required Before Creating an Assessment</p>
+              <p className="text-sm opacity-90 mt-1">
+                The following items must be created first. Click any item below to navigate to its creation page, then return here.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {missingPrereqs.map((p) => (
+              <Link
+                key={p.name}
+                href={p.link}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-red-100 dark:border-red-800/30 hover:border-red-300 dark:hover:border-red-700 transition-colors group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400 font-bold text-xs flex-shrink-0 group-hover:scale-110 transition-transform">
+                  !
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{p.name}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 underline">Go create {p.name.toLowerCase()}</p>
+                </div>
+                <ArrowLeft className="w-3.5 h-3.5 text-slate-300 rotate-180 group-hover:text-red-500 transition-colors" />
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs opacity-70">
+              After creating the required items, refresh this page to continue.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh Page
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Form Blocker Overlay */}
+      {missingPrereqs.length > 0 && (
+        <div className="relative">
+          <div className="absolute inset-0 z-10 bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-2xl flex items-center justify-center">
+            <div className="text-center p-6">
+              <div className="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-3">
+                <Lock className="w-7 h-7 text-red-500" />
+              </div>
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Form is locked</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                Complete the required setup above to unlock the assessment creation form.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${missingPrereqs.length > 0 ? 'pointer-events-none select-none opacity-60' : ''}`}>
         {/* Left: Settings */}
         <div className="lg:col-span-1 space-y-5">
           <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm">
@@ -281,7 +384,9 @@ export default function CreateQuizPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Subject</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Subject <span className="text-red-500">*</span>
+                </label>
                 <select
                   className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm
                     focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
@@ -293,7 +398,9 @@ export default function CreateQuizPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Target Classes</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Target Classes <span className="text-red-500">*</span>
+                </label>
                 <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-1">
                   {classes.map((c) => {
                     const selected = form.targetClassIds.includes(c.id);
@@ -307,8 +414,9 @@ export default function CreateQuizPage() {
                             ? 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800 shadow-sm'
                             : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:border-slate-300'
                         }`}
+                        title={c.section ? `${c.name} - Section ${c.section}` : c.name}
                       >
-                        {c.name}
+                        {c.name}{c.section ? ` (${c.section})` : ''}
                       </button>
                     );
                   })}
@@ -316,26 +424,30 @@ export default function CreateQuizPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Term</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Term <span className="text-red-500">*</span>
+                  </label>
                   <select
                     className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm
                       focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
                     value={form.termId}
                     onChange={(e) => setForm({ ...form, termId: e.target.value })}
                   >
-                    <option value="">Term...</option>
+                    <option value="">Select term...</option>
                     {terms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Session</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Session <span className="text-red-500">*</span>
+                  </label>
                   <select
                     className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm
                       focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all"
                     value={form.sessionId}
                     onChange={(e) => setForm({ ...form, sessionId: e.target.value })}
                   >
-                    <option value="">Session...</option>
+                    <option value="">Select session...</option>
                     {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
