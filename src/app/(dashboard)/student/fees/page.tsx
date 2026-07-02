@@ -376,6 +376,16 @@ export default function StudentFeesPage() {
     return p.metadata?.studentFeeId || (p as any).studentFeeId;
   };
 
+  const getPaymentDescription = (p: Payment) => {
+    if (p.metadata?.description) return p.metadata.description;
+    const feeId = getPaymentFeeId(p);
+    if (feeId) {
+      const fee = feeItems.find((f: any) => f.id === feeId);
+      if (fee) return fee.name;
+    }
+    return 'School fees';
+  };
+
   const isFeePaid = (feeId: string) => {
     return payments.some(
       (p) => p.status === 'SUCCESS' && getPaymentFeeId(p) === feeId
@@ -416,6 +426,7 @@ export default function StudentFeesPage() {
         amount,
         studentFeeId: fee.id,
         currency: gatewayConfig?.currency || 'NGN',
+        description: fee.name,
       },
       activeStudent.email || '',
       activeStudent.fullName
@@ -802,7 +813,10 @@ export default function StudentFeesPage() {
                     )}
                     <div>
                       <p className="font-medium text-sm">₦{payment.amount.toLocaleString()}</p>
-                      <p className="text-xs text-slate-500">{payment.paymentReference}</p>
+                      <p className="text-xs text-slate-500">
+                        {getPaymentDescription(payment)}
+                        <span className="text-slate-400 ml-1">• {payment.paymentReference}</span>
+                      </p>
                     </div>
                   </div>
                   <Badge

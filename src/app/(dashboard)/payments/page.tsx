@@ -325,11 +325,21 @@ export default function PaymentsPage() {
     {
       key: 'description',
       header: 'Description',
-      render: (p: Payment) => (
-        <span className="text-xs text-slate-500 truncate max-w-[150px] block">
-          {p.metadata?.description || '-'}
-        </span>
-      ),
+      render: (p: Payment) => {
+        let desc = p.metadata?.description;
+        if (!desc) {
+          const feeId = p.metadata?.studentFeeId;
+          if (feeId) {
+            const fee = feeItems.find((f: any) => f.id === feeId);
+            if (fee) desc = fee.name;
+          }
+        }
+        return (
+          <span className="text-xs text-slate-500 truncate max-w-[150px] block">
+            {desc || '-'}
+          </span>
+        );
+      },
     },
     {
       key: 'status',

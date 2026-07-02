@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
-import { dashboardApi, paymentApi } from '@/lib/api';
+import { dashboardApi, paymentApi, settingsApi } from '@/lib/api';
 import { StudentDashboard, Payment } from '@/types';
 import { motion } from 'framer-motion';
 import {
@@ -39,6 +39,7 @@ export function StudentDashboardView() {
   const { user, currentSchool } = useAuth();
   const [dashboard, setDashboard] = useState<StudentDashboard | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [feeItems, setFeeItems] = useState<any[]>([]);
   const [isLoadingDash, setIsLoadingDash] = useState(true);
   const [isLoadingPayments, setIsLoadingPayments] = useState(true);
 
@@ -52,6 +53,15 @@ export function StudentDashboardView() {
         setIsLoadingDash(false);
         setIsLoadingPayments(false);
         return;
+      }
+
+      // Fetch fee items for payment description lookup
+      try {
+        const settingsRes = await settingsApi.get(currentSchool.id);
+        const settingsData = (settingsRes as any).data || {};
+        if (!cancelled) setFeeItems(settingsData.feeItems || []);
+      } catch {
+        // silent
       }
 
       // 1. Fetch dashboard (subjects, attendance, feeStatus from backend)
@@ -394,8 +404,15 @@ export function StudentDashboardView() {
                           ₦{payment.amount.toLocaleString()}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {payment.paymentReference}
-                          {payment.metadata?.description ? ` • ${payment.metadata.description}` : ''}
+                          {(payment.metadata?.description ? payment.metadata.description : (() => {
+                            const feeId = payment.metadata?.studentFeeId;
+                            if (feeId) {
+                              const fee = feeItems.find((f: any) => f.id === feeId);
+                              if (fee) return fee.name;
+                            }
+                            return 'School fees';
+                          })())}
+                          <span className="text-slate-400 ml-1">• {payment.paymentReference}</span>
                         </p>
                       </div>
                     </div>
