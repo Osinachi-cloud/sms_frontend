@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/lib/auth';
-import { subjectApi, enrollmentApi, paymentApi } from '@/lib/api';
+import { subjectApi, enrollmentApi, paymentGatewayApi } from '@/lib/api';
+import { useInlinePayment } from '@/lib/payment-inline';
 import { normalizeListResponse } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -29,17 +30,41 @@ interface Enrollment {
 export default function StudentSubjectsPage() {
   const { currentSchool, user } = useAuth();
   const schoolId = currentSchool?.id;
-  const studentId = user?.id;
+  const studentId = user?.studentId || user?.id;
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [payingSubjectId, setPayingSubjectId] = useState<string | null>(null);
+  const [gatewayConfig, setGatewayConfig] = useState<any>(null);
+  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
+
+  const { status: inlineStatus, startPayment } = useInlinePayment({
+    schoolId: schoolId || '',
+    onSuccess: () => {
+      loadData();
+    },
+    onError: () => {
+      setActiveSubjectId(null);
+    },
+  });
 
   useEffect(() => {
     if (!schoolId || !studentId) return;
     loadData();
   }, [schoolId, studentId]);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    paymentGatewayApi.getConfig(schoolId)
+      .then((res: any) => setGatewayConfig(res.data))
+      .catch(() => {});
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (['idle', 'success', 'failed', 'cancelled'].includes(inlineStatus)) {
+      setActiveSubjectId(null);
+    }
+  }, [inlineStatus]);
 
   const loadData = async () => {
     if (!schoolId || !studentId) return;
@@ -70,24 +95,25 @@ export default function StudentSubjectsPage() {
       if (subject.isFree) {
         await enrollmentApi.enroll(schoolId, studentId, subject.id);
         toast.success(`Registered for ${subject.name}`);
+        loadData();
       } else {
-        setPayingSubjectId(subject.id);
-        const callbackUrl = `${window.location.origin}/student/subjects`;
-        const res = await enrollmentApi.pay(schoolId, studentId, subject.id, callbackUrl);
-        if (res.data?.authorizationUrl) {
-          window.location.href = res.data.authorizationUrl;
-        } else if (res.data?.accessCode) {
-          // Paystack inline flow could be implemented here
-          toast.success('Payment initiated. Please complete payment.');
-        } else {
-          toast.success('Payment initiated');
-        }
+        setActiveSubjectId(subject.id);
+        const gateway = gatewayConfig?.activeGateway || 'PAYSTACK';
+        await startPayment(
+          gateway,
+          {
+            studentId,
+            amount: subject.cost,
+            subjectId: subject.id,
+            currency: 'NGN',
+          },
+          user?.email || '',
+          user?.fullName || ''
+        );
       }
-      loadData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Action failed');
-    } finally {
-      setPayingSubjectId(null);
+      setActiveSubjectId(null);
     }
   };
 
@@ -145,7 +171,7 @@ export default function StudentSubjectsPage() {
                         size="sm"
                         className="w-full"
                         onClick={() => handleEnroll(subject)}
-                        isLoading={payingSubjectId === subject.id}
+                        isLoading={activeSubjectId === subject.id}
                       >
                         {subject.isFree ? (
                           'Register'

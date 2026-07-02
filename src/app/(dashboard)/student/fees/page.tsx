@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
-import { paymentApi, settingsApi, studentApi, dashboardApi, termApi } from '@/lib/api';
+import { paymentApi, settingsApi, studentApi, dashboardApi, termApi, paymentGatewayApi } from '@/lib/api';
 import { useInlinePayment } from '@/lib/payment-inline';
 import { Payment } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -127,14 +127,24 @@ export default function StudentFeesPage() {
   const fetchConfig = useCallback(async () => {
     if (!currentSchool) return;
     try {
-      const [settingsRes, termsRes] = await Promise.all([
+      const [settingsRes, termsRes, gatewayRes] = await Promise.all([
         settingsApi.get(currentSchool.id),
         termApi.getAll(currentSchool.id, { size: 100 }).catch(() => ({ data: null })),
+        paymentGatewayApi.getConfig(currentSchool.id).catch(() => ({ data: null })),
       ]);
       const data = (settingsRes as any).data || {};
+      const gatewayData = (gatewayRes as any)?.data || {};
+
       setFeeItems(data.feeItems || []);
       setPaymentAccounts(data.paymentAccounts || []);
-      setGatewayConfig(data);
+      setGatewayConfig({
+        ...data,
+        paystackEnabled: gatewayData.paystackEnabled ?? false,
+        flutterwaveEnabled: gatewayData.flutterwaveEnabled ?? false,
+        activeGateway: gatewayData.activeGateway || data.activeGateway,
+        paystackPublicKey: gatewayData.paystackPublicKey,
+        flutterwavePublicKey: gatewayData.flutterwavePublicKey,
+      });
 
       // Load available terms and pick current
       const allTerms = ((termsRes as any)?.data?.content || []) as Array<{ id: string; name: string; sessionId: string }>;
@@ -330,6 +340,12 @@ export default function StudentFeesPage() {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (inlineStatus === 'success') {
+      setSelectedFeeDetail(null);
+    }
+  }, [inlineStatus]);
+
   const getRelevantFees = (studentId: string) => {
     // Use activeStudent fallback (includes auth context data) so parents/students
     // still see fees even when studentApi.getAll fails.
@@ -366,6 +382,18 @@ export default function StudentFeesPage() {
     );
   };
 
+  const hasActivePayment = (feeId: string) => {
+    return payments.some(
+      (p) => (p.status === 'SUCCESS' || p.status === 'PENDING') && getPaymentFeeId(p) === feeId
+    );
+  };
+
+  const getFeePayment = (feeId: string) => {
+    return payments.find(
+      (p) => p.status === 'SUCCESS' && getPaymentFeeId(p) === feeId
+    );
+  };
+
   const computeDiscountedAmount = (fee: FeeItem) => {
     if (fee.discountType === 'none' || !fee.discountValue) return fee.amount;
     const now = new Date();
@@ -374,12 +402,6 @@ export default function StudentFeesPage() {
     if (fee.discountType === 'percentage') return Math.max(0, fee.amount - (fee.amount * fee.discountValue) / 100);
     if (fee.discountType === 'flat') return Math.max(0, fee.amount - fee.discountValue);
     return fee.amount;
-  };
-
-  const getFeePayment = (feeId: string) => {
-    return payments.find(
-      (p) => p.status === 'SUCCESS' && getPaymentFeeId(p) === feeId
-    );
   };
 
   const handlePayOnline = async (fee: FeeItem) => {
@@ -620,6 +642,7 @@ export default function StudentFeesPage() {
               <AnimatePresence>
                 {relevantFees.map((fee) => {
                   const paid = isFeePaid(fee.id);
+                  const active = hasActivePayment(fee.id);
                   const amount = fee.amount;
                   const discounted = computeDiscountedAmount(fee);
                   const hasDiscount = discounted < amount;
@@ -662,6 +685,9 @@ export default function StudentFeesPage() {
                               )}
                               {paid && (
                                 <Badge variant="success" className="text-[10px]">Paid</Badge>
+                              )}
+                              {!paid && active && (
+                                <Badge variant="warning" className="text-[10px]">Pending</Badge>
                               )}
                             </div>
                             {fee.description && (
@@ -715,13 +741,13 @@ export default function StudentFeesPage() {
                         >
                           <Info className="w-3.5 h-3.5" /> View Details
                         </button>
-                        {!paid && (
+                        {!active && (
                           <>
                             {gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled ? (
                               <Button
                                 size="sm"
                                 onClick={() => handlePayOnline(fee)}
-                                isLoading={inlineStatus === 'initializing' || inlineStatus === 'pending'}
+                                isLoading={['initializing', 'pending', 'verifying'].includes(inlineStatus)}
                               >
                                 <CreditCard className="w-4 h-4 mr-1" />
                                 Pay Online
@@ -977,6 +1003,20 @@ export default function StudentFeesPage() {
                   </div>
                 )}
 
+                {selectedFeeDetail.sessionName && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Session</span>
+                    <span className="text-sm font-medium">{selectedFeeDetail.sessionName}</span>
+                  </div>
+                )}
+
+                {selectedFeeDetail.termName && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Term</span>
+                    <span className="text-sm font-medium">{selectedFeeDetail.termName}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-500">Applicable To</span>
                   <span className="text-sm font-medium">
@@ -987,18 +1027,26 @@ export default function StudentFeesPage() {
 
               {!isFeePaid(selectedFeeDetail.id) ? (
                 <div className="space-y-2">
+                  {/* Gateway not fully configured warning */}
+                  {(gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled) &&
+                    !gatewayConfig?.paystackPublicKey &&
+                    !gatewayConfig?.flutterwavePublicKey && (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-sm flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <p>Online payment is not fully set up yet. Please contact your school admin or use Bank Transfer.</p>
+                    </div>
+                  )}
+
                   <p className="text-xs text-slate-400 text-center">
                     Click below to proceed to payment
                   </p>
                   <div className="flex gap-2">
-                    {gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled ? (
+                    {(gatewayConfig?.paystackEnabled || gatewayConfig?.flutterwaveEnabled) &&
+                      (gatewayConfig?.paystackPublicKey || gatewayConfig?.flutterwavePublicKey) ? (
                       <Button
                         className="flex-1"
-                        onClick={() => {
-                          handlePayOnline(selectedFeeDetail);
-                          setSelectedFeeDetail(null);
-                        }}
-                        isLoading={inlineStatus === 'initializing' || inlineStatus === 'pending'}
+                        onClick={() => handlePayOnline(selectedFeeDetail)}
+                        isLoading={['initializing', 'pending', 'verifying'].includes(inlineStatus)}
                       >
                         <CreditCard className="w-4 h-4 mr-1" />
                         Pay Now

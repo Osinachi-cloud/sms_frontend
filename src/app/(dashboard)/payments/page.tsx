@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
-import { paymentApi, studentApi, settingsApi } from '@/lib/api';
+import { paymentApi, studentApi, settingsApi, paymentGatewayApi } from '@/lib/api';
 import { useInlinePayment } from '@/lib/payment-inline';
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils';
 import { Payment, Student, PageResponse } from '@/types';
@@ -69,6 +69,7 @@ export default function PaymentsPage() {
     schoolId: currentSchool?.id || '',
     onSuccess: () => {
       fetchPayments();
+      fetchPaymentStats();
       closeModal();
     },
   });
@@ -112,11 +113,18 @@ export default function PaymentsPage() {
   const fetchPaymentConfig = async () => {
     if (!currentSchool) return;
     try {
-      const res = await settingsApi.get(currentSchool.id);
-      const data = (res as any).data || {};
+      const [settingsRes, gatewayRes] = await Promise.all([
+        settingsApi.get(currentSchool.id),
+        paymentGatewayApi.getConfig(currentSchool.id).catch(() => ({ data: null })),
+      ]);
+      const data = (settingsRes as any).data || {};
+      const gatewayData = (gatewayRes as any)?.data || {};
       setPaymentAccounts(data.paymentAccounts || []);
       setFeeItems(data.feeItems || []);
-      setGatewayConfig(data);
+      setGatewayConfig({
+        ...data,
+        ...gatewayData,
+      });
     } catch {
       // silent
     }
@@ -570,7 +578,7 @@ export default function PaymentsPage() {
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button
                 type="submit"
-                isLoading={isSubmitting || inlineStatus === 'initializing' || inlineStatus === 'pending'}
+                isLoading={isSubmitting || ['initializing', 'pending', 'verifying'].includes(inlineStatus)}
               >
                 <Globe className="w-4 h-4 mr-1" />
                 Pay with {gatewayConfig?.activeGateway === 'FLUTTERWAVE' ? 'Flutterwave' : 'Paystack'}

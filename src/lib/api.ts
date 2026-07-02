@@ -279,7 +279,7 @@ export const paymentApi = {
   getAll: (schoolId: string, params?: { page?: number; size?: number; status?: string }) =>
     api.get(`/api/schools/${schoolId}/payments`, { params }),
 
-  initiate: (schoolId: string, data: { studentId: string; amount: number; studentFeeId?: string; currency?: string; callbackUrl?: string; description?: string }) =>
+  initiate: (schoolId: string, data: { studentId: string; amount: number; studentFeeId?: string; subjectId?: string; currency?: string; callbackUrl?: string; description?: string }) =>
     api.post(`/api/schools/${schoolId}/payments/initialize`, data),
 
   record: (schoolId: string, data: { studentId: string; amount: number; studentFeeId?: string; currency?: string; paymentMethod?: string; description?: string }) =>
