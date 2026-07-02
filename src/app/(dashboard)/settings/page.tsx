@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { User, Bell, Shield, Palette, School, Trash2, RefreshCw, Camera, Type, Mail, Phone, MapPin, CreditCard, GraduationCap, Award, Calendar, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { settingsApi } from '@/lib/api';
+import { settingsApi, authApi } from '@/lib/api';
 import PaymentSettings from './PaymentSettings';
 import AcademicCalendarSettings from './AcademicCalendarSettings';
 import TimetablePeriodsSettings from './TimetablePeriodsSettings';
@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
-    phone: '',
+    phone: user?.phone || '',
     avatarUrl: user?.avatarUrl || '',
   });
 
@@ -170,10 +170,20 @@ export default function SettingsPage() {
       return;
     }
     setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success('Password updated successfully');
-    setSecurity((s) => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }));
-    setIsSaving(false);
+    try {
+      await authApi.changePassword({
+        currentPassword: security.currentPassword,
+        newPassword: security.newPassword,
+      });
+      toast.success('Password updated successfully');
+      setSecurity((s) => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }));
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Failed to change password';
+      setPasswordError(msg);
+      toast.error(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleColorChange = (field: 'primaryColor' | 'secondaryColor' | 'accentColor', color: string) => {
@@ -681,7 +691,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
@@ -699,7 +709,7 @@ export default function SettingsPage() {
                 <Button variant="danger" size="sm">Delete Account</Button>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </motion.div>
       )}
 
